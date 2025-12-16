@@ -1,0 +1,219 @@
+[
+  {
+    "ContainingType": "TP_ITSM.Controllers.ExeconController",
+    "Method": "GetAccount",
+    "RelativePath": "api/Execon/Account",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "recId",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TP_ITSM.Controllers.ExeconController",
+    "Method": "GetEmployee",
+    "RelativePath": "api/Execon/Employee",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "owner",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TP_ITSM.Controllers.ExeconController",
+    "Method": "GetLocation",
+    "RelativePath": "api/Execon/Location",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "recId",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TP_ITSM.Controllers.ExeconController",
+    "Method": "GetParentInfo",
+    "RelativePath": "api/Execon/ParentTask",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "recId",
+        "Type": "System.String",
+        "IsRequired": false
+      },
+      {
+        "Name": "objName",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TP_ITSM.Controllers.ExeconController",
+    "Method": "GetTask",
+    "RelativePath": "api/Execon/Task/{assignmentId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "assignmentId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TP_ITSM.Controllers.ExeconController",
+    "Method": "GetTaskCatalog",
+    "RelativePath": "api/Execon/TaskCatalog",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "subject",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TP_ITSM.Controllers.ExeconController",
+    "Method": "GetTaskReq",
+    "RelativePath": "api/Execon/Taskreq/{assignmentId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "assignmentId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TP_ITSM.Controllers.TrackpointController",
+    "Method": "GetActivity",
+    "RelativePath": "api/Trackpoint/Activity/FirebaseId",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "body",
+        "Type": "TP_ITSM.Models.Trackpoint.FirebaseId",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TP_ITSM.Controllers.TrackpointController",
+    "Method": "AddCustomer",
+    "RelativePath": "api/Trackpoint/Customer/Add",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "body",
+        "Type": "TP_ITSM.Models.Trackpoint.TpCustomerResponse",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TP_ITSM.Controllers.TrackpointController",
+    "Method": "GetAllCustomer",
+    "RelativePath": "api/Trackpoint/Customer/All",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TP_ITSM.Controllers.TrackpointController",
+    "Method": "DeleteCustomer",
+    "RelativePath": "api/Trackpoint/Customer/Delete",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "body",
+        "Type": "TP_ITSM.Models.Trackpoint.FirebaseIdRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TP_ITSM.Controllers.TrackpointController",
+    "Method": "GetCustomer",
+    "RelativePath": "api/Trackpoint/Customer/ID",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "body",
+        "Type": "TP_ITSM.Models.Trackpoint.FirebaseIdRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TP_ITSM.Controllers.TrackpointController",
+    "Method": "UpdateCustomer",
+    "RelativePath": "api/Trackpoint/Customer/Update",
+    "HttpMethod": "PUT",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "body",
+        "Type": "TP_ITSM.Models.Trackpoint.TpCustomerResponse",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TP_ITSM.Controllers.TrackpointController",
+    "Method": "GetToken",
+    "RelativePath": "api/Trackpoint/Token",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  }
+]

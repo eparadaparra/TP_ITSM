@@ -1,0 +1,6 @@
+@TP_ITSM_HostAddress = http://localhost:5169
+
+GET {{TP_ITSM_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

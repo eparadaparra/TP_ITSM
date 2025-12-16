@@ -1,0 +1,212 @@
+﻿using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
+using TP_ITSM.Models;
+using TP_ITSM.Models.Execon;
+using TP_ITSM.Services.Execon;
+
+namespace TP_ITSM.Controllers
+{
+    [Route("api/Execon")]
+    [ApiController]
+    public class ExeconController : ControllerBase
+    {
+        private readonly IServices _services;
+        public ExeconController(IServices services)
+        {
+            _services = services;
+        }
+
+        #region Task
+        [HttpGet]
+        [Route("Task/{assignmentId}")]
+        public async Task<IActionResult> GetTask(int assignmentId)
+        {
+            var (success, result) = await _services.GetTask(assignmentId);
+
+            if (!success || string.IsNullOrEmpty(result))
+            {
+                ErrorResponse error = new ErrorResponse();
+                error.Mensaje = $"No se encontró la tarea con assignmentId: {assignmentId}";
+                return NotFound(error);
+            }
+
+            try
+            {
+                JsonDocument.Parse(result);
+                return Content(result, "application/json; charset=utf-8");
+            }
+            catch (JsonException)
+            {
+                // Si el JSON no es válido, retornar error
+                return StatusCode(500, "El formato del JSON es inválido");
+            }
+            
+        }
+        #endregion
+
+        #region Get Parent Info
+        [HttpGet]
+        [Route("ParentTask")]
+        public async Task<IActionResult> GetParentInfo(string recId, string objName)
+        {
+            var (success, result) = await _services.GetParentInfo(recId, objName);
+
+            if (!success || string.IsNullOrEmpty(result))
+            {
+                ErrorResponse error = new ErrorResponse();
+                error.Mensaje = $"No se encontró el {objName}";
+                return NotFound(error);
+            }
+
+            try
+            {
+                JsonDocument.Parse(result);
+                return Content(result, "application/json; charset=utf-8");
+            }
+            catch (JsonException)
+            {
+                // Si el JSON no es válido, retornar error
+                return StatusCode(500, "El formato del JSON es inválido");
+            }
+
+        }
+        #endregion
+
+        #region Get Account
+        [HttpGet]
+        [Route("Account")]
+        public async Task<IActionResult> GetAccount(string recId)
+        {
+            var (success, result) = await _services.GetAccount(recId);
+
+            if (!success || string.IsNullOrEmpty(result))
+            {
+                ErrorResponse error = new ErrorResponse();
+                error.Mensaje = $"No se encontró el Account";
+                return NotFound(error);
+            }
+
+            try
+            {
+                JsonDocument.Parse(result);
+                return Content(result, "application/json; charset=utf-8");
+            }
+            catch (JsonException)
+            {
+                // Si el JSON no es válido, retornar error
+                return StatusCode(500, "El formato del JSON es inválido");
+            }
+        }
+        #endregion
+
+        #region Get Location
+        [HttpGet]
+        [Route("Location")]
+        public async Task<IActionResult> GetLocation(string recId)
+        {
+            var (success, result) = await _services.GetLocation(recId);
+
+            if (!success || string.IsNullOrEmpty(result))
+            {
+                ErrorResponse error = new ErrorResponse();
+                error.Mensaje = $"No se encontró el Location";
+                return NotFound(error);
+            }
+
+            try
+            {
+                JsonDocument.Parse(result);
+                return Content(result, "application/json; charset=utf-8");
+            }
+            catch (JsonException)
+            {
+                // Si el JSON no es válido, retornar error
+                return StatusCode(500, "El formato del JSON es inválido");
+            }
+        }
+        #endregion
+
+        #region Get Employee
+        [HttpGet]
+        [Route("Employee")]
+        public async Task<IActionResult> GetEmployee(string owner)
+        {
+            var (success, result) = await _services.GetEmployee(owner);
+
+            if (!success || string.IsNullOrEmpty(result))
+            {
+                ErrorResponse error = new ErrorResponse();
+                error.Mensaje = $"No se encontró el Owner";
+                return NotFound(error);
+            }
+
+            try
+            {
+                JsonDocument.Parse(result);
+                return Content(result, "application/json; charset=utf-8");
+            }
+            catch (JsonException)
+            {
+                // Si el JSON no es válido, retornar error
+                return StatusCode(500, "El formato del JSON es inválido");
+            }
+        }
+        #endregion
+
+        #region Task Catalog
+        [HttpGet]
+        [Route("TaskCatalog")]
+        public async Task<IActionResult> GetTaskCatalog(string subject)
+        {
+            var (success, result) = await _services.GetTaskCatalog(subject);
+
+            if (!success || string.IsNullOrEmpty(result))
+            {
+                ErrorResponse error = new ErrorResponse();
+                error.Mensaje = $"No se encontró el tipo de tarea: {subject}";
+                return NotFound(error);
+            }
+
+            try
+            {
+                JsonDocument.Parse(result);
+                return Content(result, "application/json; charset=utf-8");
+            }
+            catch (JsonException)
+            {
+                // Si el JSON no es válido, retornar error
+                return StatusCode(500, "El formato del JSON es inválido");
+            }
+
+        }
+        #endregion
+
+        #region Task Request
+        [HttpGet]
+        [Route("Taskreq/{assignmentId}")]
+        public async Task<IActionResult> GetTaskReq(int assignmentId)
+        {
+            var (success, result) = await _services.GetTaskReq(assignmentId);
+
+            if (!success || string.IsNullOrEmpty(result))
+            {
+                ErrorResponse error = new ErrorResponse();
+                error.Mensaje = $"No se encontró la tarea con assignmentId: {assignmentId}";
+                return NotFound(error);
+            }
+
+            try
+            {
+                JsonDocument.Parse(result);
+                return Content(result, "application/json; charset=utf-8");
+            }
+            catch (JsonException)
+            {
+                // Si el JSON no es válido, retornar error
+                return StatusCode(500, "El formato del JSON es inválido");
+            }
+
+        }
+        #endregion
+    }
+}
