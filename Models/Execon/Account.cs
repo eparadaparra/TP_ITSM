@@ -12,8 +12,5 @@ namespace TP_ITSM.Models.Execon
 
         [JsonPropertyName("CustID")]
         public string CustID { get; set; }
-
-        [JsonPropertyName("client_uuid")]
-        public string client_uuid { get; set; }
     }
 }

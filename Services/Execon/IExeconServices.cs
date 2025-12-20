@@ -3,7 +3,7 @@ using TP_ITSM.Models.Execon;
 
 namespace TP_ITSM.Services.Execon
 {
-    public interface IServices
+    public interface IExeconServices
     {
         Task<(bool, string)> GetTask(int assignmentId);
         Task<(bool, string)> GetAccount(string recId);

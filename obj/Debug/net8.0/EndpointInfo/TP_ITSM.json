@@ -341,6 +341,71 @@
           }
         }
       }
+    },
+    "/api/Trackpoint/Activity/ScheduledProgramming": {
+      "post": {
+        "tags": [
+          "Trackpoint"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { }
+            },
+            "text/json": {
+              "schema": { }
+            },
+            "application/*+json": {
+              "schema": { }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Trackpoint/Activity/UpdActivityPreload": {
+      "post": {
+        "tags": [
+          "Trackpoint"
+        ],
+        "parameters": [
+          {
+            "name": "firebaseId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Preload"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Preload"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/Preload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -471,6 +536,44 @@
         },
         "additionalProperties": false
       },
+      "Preload": {
+        "type": "object",
+        "properties": {
+          "RecId": {
+            "type": "string",
+            "nullable": true
+          },
+          "AssignmentID": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "ParentNumber": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "ParentLink_Category": {
+            "type": "string",
+            "nullable": true
+          },
+          "EX_IdSitio": {
+            "type": "string",
+            "nullable": true
+          },
+          "CustID": {
+            "type": "string",
+            "nullable": true
+          },
+          "EX_CodigoCierre": {
+            "type": "string",
+            "nullable": true
+          },
+          "DisplayName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "TpCustomerResponse": {
         "type": "object",
         "properties": {
@@ -484,6 +587,10 @@
           },
           "data": {
             "$ref": "#/components/schemas/DataCustomerTP"
+          },
+          "id": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false

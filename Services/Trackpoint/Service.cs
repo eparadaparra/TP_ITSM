@@ -2,22 +2,23 @@
 using System.Net.Http.Headers;
 using System.Text;
 using TP_ITSM.Models;
+using TP_ITSM.Models.Execon;
 using TP_ITSM.Models.Trackpoint;
 
 namespace TP_ITSM.Services.Trackpoint
 {
 
-    public class Service : IServices
+    public class Service : ITrackpointServices
     {
         #region Declaración de Variables
 
-        private static string? _url;
-        private static string? _custumerKey;
-        private static string? _autorization;
-        private static string? _user;
-        private static string? _pass;
-        private static string? _token;
-        private static List<string> _lstLogEvent = [];
+        private string? _url;
+        private string? _custumerKey;
+        private string? _autorization;
+        private string? _user;
+        private string? _pass;
+        private string? _token;
+        private List<string> _lstLogEvent = [];
         private TpAuthResponse _tokenResponse;
 
         private string _responseText;
@@ -73,9 +74,9 @@ namespace TP_ITSM.Services.Trackpoint
         #endregion
 
         #region GetToken
-        public async Task<object> GetToken()
+        public async Task<TpAuthResponse> GetToken()
         {
-            await AuthTp();
+            await AuthTp();     
             return _tokenResponse;
         }
         #endregion
@@ -190,6 +191,78 @@ namespace TP_ITSM.Services.Trackpoint
                 else
                 {
                     return (false, "No se pudo obtener la información de la Actividad");
+                }
+            }
+            catch (Exception ex)
+            {
+                return (false, ex.Message);
+            }
+        }
+        #endregion
+
+        #region Set Activity ITSM-TP
+        public async Task<(bool, string)> SetActivityTP(object request)
+        {
+            try
+            { 
+                await AuthTp();
+                HttpClient httpClient = new HttpClient();
+                httpClient.BaseAddress = new Uri(_url);
+                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _token);
+                httpClient.DefaultRequestHeaders.Add("api-customer-key", _custumerKey);
+
+                var response = await httpClient.PostAsJsonAsync("/apiScheduledProgrammingAdd", request);
+                _responseText = await response.Content.ReadAsStringAsync();
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var jsonObjCreated = JsonConvert.DeserializeObject<ActivityResult>(_responseText);
+                    string firebaseId = jsonObjCreated?.data.firebase_id ?? "";
+
+                    return (response.IsSuccessStatusCode, _responseText);
+                }
+                else
+                {
+                    return (false, _responseText);
+                }
+            }
+            catch (Exception ex)
+            {
+                return (false, ex.Message);
+            }
+        }
+        #endregion
+
+        #region Upd Activity Preload
+        public async Task<(bool, string)> UpdActivityTP(Preload preload, string firebaseId)
+        {
+            List<Preload> lstPreload = new List<Preload>();
+            lstPreload.Add(preload);
+            DataPreload dataPreload = new DataPreload() { 
+                firebase_id = firebaseId, 
+                data = lstPreload 
+            };
+            PreloadReq req = new PreloadReq() { data = dataPreload };
+
+            var content = new StringContent(JsonConvert.SerializeObject(req), Encoding.UTF8, "application/json");
+            try
+            {
+                await AuthTp();
+                HttpClient httpClient = new HttpClient();
+                httpClient.BaseAddress = new Uri(_url);
+                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _token);
+                httpClient.DefaultRequestHeaders.Add("api-customer-key", _custumerKey);
+
+                var response = await httpClient.PostAsync("/updateEventWebhook", content);
+                _responseText = await response.Content.ReadAsStringAsync();
+
+                if (response.IsSuccessStatusCode)
+                {
+                    return (response.IsSuccessStatusCode, _responseText);
+                }
+                else
+                {
+                    return (false, _responseText);
                 }
             }
             catch (Exception ex)

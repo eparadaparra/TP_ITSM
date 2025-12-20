@@ -10,8 +10,8 @@ namespace TP_ITSM.Controllers
     [ApiController]
     public class ExeconController : ControllerBase
     {
-        private readonly IServices _services;
-        public ExeconController(IServices services)
+        private readonly IExeconServices _services;
+        public ExeconController(IExeconServices services)
         {
             _services = services;
         }

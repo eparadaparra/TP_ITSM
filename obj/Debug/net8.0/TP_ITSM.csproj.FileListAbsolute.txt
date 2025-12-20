@@ -34,3 +34,4 @@ C:\Users\elias.parada\OneDrive\Programacion\APIs\TP_ITSM\obj\Debug\net8.0\refint
 C:\Users\elias.parada\OneDrive\Programacion\APIs\TP_ITSM\obj\Debug\net8.0\TP_ITSM.pdb
 C:\Users\elias.parada\OneDrive\Programacion\APIs\TP_ITSM\obj\Debug\net8.0\TP_ITSM.genruntimeconfig.cache
 C:\Users\elias.parada\OneDrive\Programacion\APIs\TP_ITSM\obj\Debug\net8.0\ref\TP_ITSM.dll
+C:\Users\elias.parada\OneDrive\Programacion\APIs\TP_ITSM\obj\Debug\net8.0\TP_ITSM.sourcelink.json

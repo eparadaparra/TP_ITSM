@@ -9,8 +9,8 @@ namespace TP_ITSM.Controllers
     [ApiController]
     public class TrackpointController : ControllerBase
     {
-        private readonly IServices _services;
-        public TrackpointController(IServices services)
+        private readonly ITrackpointServices _services;
+        public TrackpointController(ITrackpointServices services)
         {
             _services = services;
         }
@@ -175,6 +175,47 @@ namespace TP_ITSM.Controllers
             }
 
             var (success, result) = await _services.GetActivityTP(id);
+
+            if (success)
+            {
+                return Content(result, "application/json");
+            }
+            else
+            {
+                ErrorResponse error = new ErrorResponse();
+                error.Mensaje = result;
+                return Ok(error);
+            }
+        }
+        #endregion
+
+        #region Set Activity TP
+        [HttpPost]
+        [Route("Activity/ScheduledProgramming")]
+        public async Task<IActionResult> SetActivity([FromBody] object body)
+        {            
+            var (success, result) = await _services.SetActivityTP(body);
+
+            if (success)
+            {
+                return Content(result, "application/json");
+            }
+            else
+            {
+                ErrorResponse error = new ErrorResponse();
+                error.Mensaje = result;
+                return Ok(error);
+            }
+        }
+        #endregion
+
+        #region Update Activity TP
+        [HttpPost]
+        [Route("Activity/UpdActivityPreload")]
+        public async Task<IActionResult> UpdActivity([FromBody] Preload body, string firebaseId)
+        {
+
+            var (success, result) = await _services.UpdActivityTP(body, firebaseId);
 
             if (success)
             {

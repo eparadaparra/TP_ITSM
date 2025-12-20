@@ -134,6 +134,43 @@
   },
   {
     "ContainingType": "TP_ITSM.Controllers.TrackpointController",
+    "Method": "SetActivity",
+    "RelativePath": "api/Trackpoint/Activity/ScheduledProgramming",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "body",
+        "Type": "System.Object",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TP_ITSM.Controllers.TrackpointController",
+    "Method": "UpdActivity",
+    "RelativePath": "api/Trackpoint/Activity/UpdActivityPreload",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "body",
+        "Type": "TP_ITSM.Models.Trackpoint.Preload",
+        "IsRequired": true
+      },
+      {
+        "Name": "firebaseId",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TP_ITSM.Controllers.TrackpointController",
     "Method": "AddCustomer",
     "RelativePath": "api/Trackpoint/Customer/Add",
     "HttpMethod": "POST",
