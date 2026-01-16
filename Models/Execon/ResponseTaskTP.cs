@@ -1,6 +1,4 @@
-﻿using Microsoft.AspNetCore.Http.HttpResults;
-using Newtonsoft.Json.Linq;
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 
 namespace TP_ITSM.Models.Execon
 {
@@ -31,14 +29,13 @@ namespace TP_ITSM.Models.Execon
             start_date_utc2 ??= DateTimeOffset.UtcNow;
             end_date_utc    ??= new Timestamp();
             end_date_utc2   ??= DateTimeOffset.UtcNow;
-            created_api     ??= false;
         }
 
         [JsonPropertyName("firebase_id")]
         public string firebase_id { get; set; } = "No disponible";
 
         [JsonPropertyName("created_api")]
-        public bool? created_api { get; set; }
+        public bool created_api { get; set; } = false;
 
         [JsonPropertyName("status")]
         public string status { get; set; } = "No disponible";
@@ -65,12 +62,12 @@ namespace TP_ITSM.Models.Execon
         public string scheduled_periodicity { get; set; } = "notrepeat";
 
         [JsonPropertyName("classification_category_name")]
-        public string classification_category_name { get; set; }
+        public string classification_category_name { get; set; } = "No disponible";
 
         [JsonPropertyName("classification_subcategory_name")]
-        public string classification_subcategory_name { get; set; }
+        public string classification_subcategory_name { get; set; } = "No disponible";
 
-        
+
         [JsonPropertyName("start_date_utc")]
         public Timestamp start_date_utc { get; set; }
 
@@ -86,7 +83,7 @@ namespace TP_ITSM.Models.Execon
 
 
         [JsonPropertyName("statusInfo")]
-        public StatusInfo statusInfo { get; set; }
+        public StatusInfo? statusInfo { get; set; }
 
         [JsonPropertyName("preload")]
         public List<Preload> preload { get; set; } 
