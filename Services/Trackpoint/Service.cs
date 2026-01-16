@@ -4,6 +4,7 @@ using System.Text;
 using TP_ITSM.Models;
 using TP_ITSM.Models.Execon;
 using TP_ITSM.Models.Trackpoint;
+using Preload = TP_ITSM.Models.Trackpoint.Preload;
 
 namespace TP_ITSM.Services.Trackpoint
 {
@@ -204,7 +205,8 @@ namespace TP_ITSM.Services.Trackpoint
         public async Task<(bool, string)> SetActivityTP(object request)
         {
             try
-            { 
+            {
+                Console.WriteLine(request.GetType());
                 await AuthTp();
                 HttpClient httpClient = new HttpClient();
                 httpClient.BaseAddress = new Uri(_url);

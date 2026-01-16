@@ -3,12 +3,15 @@ using Newtonsoft.Json.Linq;
 using System.Collections.Specialized;
 using System.Net.Http.Headers;
 using System.Reflection;
+using System.Text;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Web;
 using TP_ITSM.Models;
 using TP_ITSM.Models.Execon;
 using TP_ITSM.Models.Trackpoint;
 using TP_ITSM.Services.Trackpoint;
+using Preload = TP_ITSM.Models.Trackpoint.Preload;
 
 namespace TP_ITSM.Services.Execon
 {
@@ -60,7 +63,7 @@ namespace TP_ITSM.Services.Execon
             {
                 string objeto = "Task";
                 string filter = $"AssignmentId eq {assignmentId} AND TaskType eq 'Assignment'";
-                string select = "RecId, AssignmentID, Priority, PlannedStartDate, Details, ParentLink_RecID, ParentLink_Category, EX_CodigoCierre, Subject";
+                string select = "RecId, AssignmentID, Priority, PlannedStartDate, Details, ParentLink_RecID, ParentLink_Category, EX_CodigoCierre, Subject, EX_FirebaseID";
 
                 bool response = await GetFilter(objeto, filter, select);
 
@@ -289,7 +292,80 @@ namespace TP_ITSM.Services.Execon
                 return (false, ex.Message);
             }
         }
-       
+
+        public async Task<(bool, string)> ScheduledTask(int assignmentId)
+        {
+            try 
+            {
+                #region Obtiene Información de la Tarea
+                var (successGetTask, tpRequest) = await GetTaskReq(assignmentId);
+                if (!successGetTask)
+                    return (false, tpRequest);
+                #endregion
+
+                #region Manda Solicitud de creación de Activity en Trackpoint
+                var rootElementRequest = ConvertModelToJsonElement(_tpRequest);
+                #region Habilitar para ver el JSON generado si la linea de arriba falla
+                //using JsonDocument document = JsonDocument.Parse(tpRequest);
+                //JsonElement rootElementRequest = document.RootElement;
+                #endregion
+
+                var (successSetActivity, resultActivity) = await _tpServices.SetActivityTP(rootElementRequest);
+                var jsonObjCreated = JsonConvert.DeserializeObject<ActivityResult>(resultActivity);
+                string firebaseId = jsonObjCreated?.data.firebase_id ?? "";
+                if (!successSetActivity || firebaseId == "")
+                    return (false, resultActivity);
+                #endregion
+
+                #region Actualiza el Task en ITSM con el FirebaseID generado
+                var upData = new { EX_FirebaseID = firebaseId };
+                    Console.WriteLine("Tipo de var jsonPatch: " + upData.GetType().ToString());
+                var (successUpd, responseUpd) = await UpPatchITSM("Task", _preloadRequest.frmRecIdTask!, upData);
+                if (!successUpd)
+                    Console.WriteLine($"No se pudo actualizar el Task con el FirebaseID: {_preloadRequest.frmRecIdTask}");
+                //return (false, _responseText);
+                #endregion
+
+                #region Asigna el FirebaseID al modelo de Preload a la Actividad creada
+                var (successSetPreload, resultPreload) = await _tpServices.UpdActivityTP(_preloadRequest, firebaseId);
+                if (!successSetPreload)
+                    return (false, resultPreload);
+                #endregion
+
+                return (true, resultActivity);
+            }
+            catch (Exception ex)
+            {
+                return (false, ex.Message);
+            }
+        }
+
+        public async Task<(bool, string)> UpTask(ResponseTaskTP requestBody)
+        {
+            try
+            {
+                var body = requestBody.ToString(); // Convertir a string primero
+                JObject json = JObject.Parse(body);
+                JToken data = json["data"];
+
+                var (successUpd, _responseText) = await UpPatchITSM("Task", "A0AC2D7AD07A431FAB8C96BCB3A63288", data);
+                if (!successUpd)
+                    return (successUpd, _responseText);
+
+                return (true, _responseText);
+            }
+            catch (Exception ex)
+            {
+                return (false, ex.Message);
+            }
+        }
+
+        private JsonElement ConvertModelToJsonElement<T>(T model) => JsonDocument.Parse(JsonConvert.SerializeObject(model)).RootElement.Clone();
+        //{
+        //    using JsonDocument document = JsonDocument.Parse(JsonConvert.SerializeObject(model).ToString());
+        //    return document.RootElement.Clone();
+        //}
+
         private async Task<(bool, string)> GetSetTpCustomerInfo(AccountInfo customer)
         {
             #region Valida en Trackpoint que exista del cliente
@@ -407,6 +483,29 @@ namespace TP_ITSM.Services.Execon
             {
                 _responseText = ex.Message;
                 return false;
+            }
+        }
+
+        private async Task<(bool, string)> UpPatchITSM<T>(string objeto, string recId, T update)
+        {
+            try
+            {
+                Console.WriteLine("Tipo de var update: " + update.GetType().ToString());
+                var content = new StringContent(JsonConvert.SerializeObject(update), Encoding.UTF8, "application/json");
+                NameValueCollection queryParams = HttpUtility.ParseQueryString(string.Empty);
+                queryParams["objeto"] = objeto;
+                queryParams["recId"]  = recId;
+
+                HttpClient client = CreateHttpClient();
+                HttpResponseMessage response = await client.PatchAsync($"{_ambiente}/api/Obj/Update?{queryParams}", content);
+                _responseText = await response.Content.ReadAsStringAsync();
+
+                return (response.IsSuccessStatusCode, _responseText);
+            }
+            catch (Exception ex)
+            {
+                _responseText = ex.Message;
+                return (false, _responseText);
             }
         }
 

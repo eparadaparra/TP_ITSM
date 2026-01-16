@@ -140,7 +140,7 @@
         }
       }
     },
-    "/api/Execon/Taskreq/{assignmentId}": {
+    "/api/Execon/TaskRequest/{assignmentId}": {
       "get": {
         "tags": [
           "Execon"
@@ -156,6 +156,54 @@
             }
           }
         ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Execon/ScheduledTask/{assignmentId}": {
+      "post": {
+        "tags": [
+          "Execon"
+        ],
+        "parameters": [
+          {
+            "name": "assignmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Execon/Task": {
+      "patch": {
+        "tags": [
+          "Execon"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { }
+            },
+            "text/json": {
+              "schema": { }
+            },
+            "application/*+json": {
+              "schema": { }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "OK"
@@ -280,7 +328,7 @@
         }
       }
     },
-    "/api/Trackpoint/Customer/Delete": {
+    "/api/Trackpoint/Customer": {
       "delete": {
         "tags": [
           "Trackpoint"

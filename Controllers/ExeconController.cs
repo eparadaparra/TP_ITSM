@@ -6,7 +6,7 @@ using TP_ITSM.Services.Execon;
 
 namespace TP_ITSM.Controllers
 {
-    [Route("api/Execon")]
+    [Route("api/[controller]")]
     [ApiController]
     public class ExeconController : ControllerBase
     {
@@ -16,7 +16,7 @@ namespace TP_ITSM.Controllers
             _services = services;
         }
 
-        #region Task
+        #region Get Task
         [HttpGet]
         [Route("Task/{assignmentId}")]
         public async Task<IActionResult> GetTask(int assignmentId)
@@ -153,7 +153,7 @@ namespace TP_ITSM.Controllers
         }
         #endregion
 
-        #region Task Catalog
+        #region Get Task Catalog
         [HttpGet]
         [Route("TaskCatalog")]
         public async Task<IActionResult> GetTaskCatalog(string subject)
@@ -181,9 +181,9 @@ namespace TP_ITSM.Controllers
         }
         #endregion
 
-        #region Task Request
+        #region Request Task
         [HttpGet]
-        [Route("Taskreq/{assignmentId}")]
+        [Route("TaskRequest/{assignmentId}")]
         public async Task<IActionResult> GetTaskReq(int assignmentId)
         {
             var (success, result) = await _services.GetTaskReq(assignmentId);
@@ -208,5 +208,55 @@ namespace TP_ITSM.Controllers
 
         }
         #endregion
+
+        #region Scheduled Task ITSM
+        [HttpPost]
+        [Route("ScheduledTask/{assignmentId}")]
+        public async Task<IActionResult> ScheduledTask(int assignmentId)
+        {
+            var (success, result) = await _services.ScheduledTask(assignmentId);
+
+            if (!success || string.IsNullOrEmpty(result))
+            {
+                ErrorResponse error = new ErrorResponse();
+                error.Mensaje = $"No se encontró la tarea con assignmentId: {assignmentId}";
+                return NotFound(error);
+            }
+
+            try
+            {
+                JsonDocument.Parse(result);
+                return Content(result, "application/json; charset=utf-8");
+            }
+            catch (JsonException)
+            {
+                // Si el JSON no es válido, retornar error
+                return StatusCode(500, "El formato del JSON es inválido");
+            }
+
+        }
+        #endregion
+
+        #region Update Task ITSM
+        [HttpPatch]
+        [Route("Task")]
+        public async Task<IActionResult> UpTaskITSM([FromBody] object body)
+        {
+            ResponseTaskTP newBody = JsonSerializer.Deserialize<ResponseTaskTP>(body.ToString());
+            var (success, result) = await _services.UpTask(newBody);
+
+            if (success)
+            {
+                return Content(result, "application/json");
+            }
+            else
+            {
+                ErrorResponse error = new ErrorResponse();
+                error.Mensaje = result;
+                return Ok(error);
+            }
+        }
+        #endregion
+
     }
 }

@@ -12,5 +12,7 @@ namespace TP_ITSM.Services.Execon
         Task<(bool, string)> GetTaskCatalog(string taskSubject);
         Task<(bool, string)> GetParentInfo(string recId, string objName);
         Task<(bool, string)> GetTaskReq(int assignmentId);
+        Task<(bool, string)> ScheduledTask(int assignmentId);
+        Task<(bool, string)> UpTask(ResponseTaskTP activityTP);
     }
 }

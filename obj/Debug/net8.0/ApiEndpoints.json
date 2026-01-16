@@ -70,6 +70,38 @@
   },
   {
     "ContainingType": "TP_ITSM.Controllers.ExeconController",
+    "Method": "ScheduledTask",
+    "RelativePath": "api/Execon/ScheduledTask/{assignmentId}",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "assignmentId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TP_ITSM.Controllers.ExeconController",
+    "Method": "UpTaskITSM",
+    "RelativePath": "api/Execon/Task",
+    "HttpMethod": "PATCH",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "body",
+        "Type": "System.Object",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TP_ITSM.Controllers.ExeconController",
     "Method": "GetTask",
     "RelativePath": "api/Execon/Task/{assignmentId}",
     "HttpMethod": "GET",
@@ -103,7 +135,7 @@
   {
     "ContainingType": "TP_ITSM.Controllers.ExeconController",
     "Method": "GetTaskReq",
-    "RelativePath": "api/Execon/Taskreq/{assignmentId}",
+    "RelativePath": "api/Execon/TaskRequest/{assignmentId}",
     "HttpMethod": "GET",
     "IsController": true,
     "Order": 0,
@@ -171,6 +203,22 @@
   },
   {
     "ContainingType": "TP_ITSM.Controllers.TrackpointController",
+    "Method": "DeleteCustomer",
+    "RelativePath": "api/Trackpoint/Customer",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "body",
+        "Type": "TP_ITSM.Models.Trackpoint.FirebaseIdRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TP_ITSM.Controllers.TrackpointController",
     "Method": "AddCustomer",
     "RelativePath": "api/Trackpoint/Customer/Add",
     "HttpMethod": "POST",
@@ -193,22 +241,6 @@
     "IsController": true,
     "Order": 0,
     "Parameters": [],
-    "ReturnTypes": []
-  },
-  {
-    "ContainingType": "TP_ITSM.Controllers.TrackpointController",
-    "Method": "DeleteCustomer",
-    "RelativePath": "api/Trackpoint/Customer/Delete",
-    "HttpMethod": "DELETE",
-    "IsController": true,
-    "Order": 0,
-    "Parameters": [
-      {
-        "Name": "body",
-        "Type": "TP_ITSM.Models.Trackpoint.FirebaseIdRequest",
-        "IsRequired": true
-      }
-    ],
     "ReturnTypes": []
   },
   {

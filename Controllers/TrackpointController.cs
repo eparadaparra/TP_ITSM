@@ -5,7 +5,7 @@ using TP_ITSM.Services.Trackpoint;
 
 namespace TP_ITSM.Controllers
 {
-    [Route("api/Trackpoint")]
+    [Route("api/[controller]")]
     [ApiController]
     public class TrackpointController : ControllerBase
     {
@@ -26,7 +26,7 @@ namespace TP_ITSM.Controllers
         }
         #endregion
 
-        #region All Customers
+        #region Customers - All 
         [HttpGet]
         [Route("Customer/All")]
         public async Task<IActionResult> GetAllCustomer()
@@ -37,7 +37,7 @@ namespace TP_ITSM.Controllers
         }
         #endregion
 
-        #region Customers By ID
+        #region Customers - By ID
         [HttpPost]
         [Route("Customer/ID")]
         public async Task<IActionResult> GetCustomer([FromBody] FirebaseIdRequest body)
@@ -72,7 +72,7 @@ namespace TP_ITSM.Controllers
         }
         #endregion
 
-        #region Add Customers
+        #region Customers - Add
         [HttpPost]
         [Route("Customer/Add")]
         public async Task<IActionResult> AddCustomer(TpCustomerResponse body )
@@ -99,7 +99,7 @@ namespace TP_ITSM.Controllers
         }
         #endregion
 
-        #region Update Customers
+        #region Customers - Update
         [HttpPut]
         [Route("Customer/Update")]
         public async Task<IActionResult> UpdateCustomer(TpCustomerResponse body)
@@ -127,9 +127,9 @@ namespace TP_ITSM.Controllers
         }
         #endregion
 
-        #region Customers Delete
+        #region Customers - Delete
         [HttpDelete]
-        [Route("Customer/Delete")]
+        [Route("Customer")]
         public async Task<IActionResult> DeleteCustomer([FromBody] FirebaseIdRequest body)
         {
             string id = body?.id?.Trim() ?? string.Empty;
@@ -162,7 +162,7 @@ namespace TP_ITSM.Controllers
         }
         #endregion
 
-        #region Get Event Activity
+        #region Activity - Get Event 
         [HttpPost]
         [Route("Activity/FirebaseId")]
         public async Task<IActionResult> GetActivity([FromBody] FirebaseId body)
@@ -189,7 +189,7 @@ namespace TP_ITSM.Controllers
         }
         #endregion
 
-        #region Set Activity TP
+        #region Activity - Set
         [HttpPost]
         [Route("Activity/ScheduledProgramming")]
         public async Task<IActionResult> SetActivity([FromBody] object body)
@@ -209,7 +209,7 @@ namespace TP_ITSM.Controllers
         }
         #endregion
 
-        #region Update Activity TP
+        #region Activity - Update Aditional
         [HttpPost]
         [Route("Activity/UpdActivityPreload")]
         public async Task<IActionResult> UpdActivity([FromBody] Preload body, string firebaseId)
