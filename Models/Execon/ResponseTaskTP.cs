@@ -8,11 +8,11 @@ namespace TP_ITSM.Models.Execon
         {
             data = new Data();
         }
-        
+
         public string status { get; set; } = "No disponible";
-        
+
         public string message { get; set; } = "No disponible";
-        
+
         public Data data { get; set; } = new Data();
     }
 
@@ -20,22 +20,21 @@ namespace TP_ITSM.Models.Execon
     {
         public void Initialize()
         {
-            geolocation     ??= new Geolocation();
+            start_date_utc  ??= new Timestamp();
+            end_date_utc    ??= new Timestamp();
+            statusInfo      ??= new StatusInfo();
             preload         ??= new List<Preload>();
+            geolocation     ??= new Geolocation();
             modules_config  ??= new ModulesConfig();
             elements        ??= new List<Element>();
-            statusInfo      ??= new StatusInfo();
-            start_date_utc  ??= new Timestamp();
-            start_date_utc2 ??= DateTimeOffset.UtcNow;
-            end_date_utc    ??= new Timestamp();
-            end_date_utc2   ??= DateTimeOffset.UtcNow;
         }
 
-        [JsonPropertyName("firebase_id")]
-        public string firebase_id { get; set; } = "No disponible";
-
+        #region Variables simples
         [JsonPropertyName("created_api")]
         public bool created_api { get; set; } = false;
+        
+        [JsonPropertyName("firebase_id")]
+        public string firebase_id { get; set; } = "No disponible";
 
         [JsonPropertyName("status")]
         public string status { get; set; } = "No disponible";
@@ -66,76 +65,90 @@ namespace TP_ITSM.Models.Execon
 
         [JsonPropertyName("classification_subcategory_name")]
         public string classification_subcategory_name { get; set; } = "No disponible";
+        #endregion
 
-
+        #region Variables con Timestamp y DateTimeOffset
         [JsonPropertyName("start_date_utc")]
         public Timestamp start_date_utc { get; set; }
 
+        [JsonPropertyName("start_date_utc_dateTimeOffset")]
+        public DateTimeOffset start_date_utc_dateTimeOffset
+        {
+            get => DateTimeOffset.FromUnixTimeSeconds(start_date_utc._seconds)
+                    .AddTicks(start_date_utc._nanoseconds / 100);
+        }
+
         [JsonPropertyName("start_date_utc2")]
-        public DateTimeOffset? start_date_utc2 { get; set; }
+        public DateTimeOffset? start_date_utc2 { get; set; } = DateTimeOffset.UtcNow;
 
         [JsonPropertyName("end_date_utc")]
         public Timestamp end_date_utc { get; set; }
 
+        [JsonPropertyName("end_date_utc_dateTimeOffset")]
+        public DateTimeOffset end_date_utc_dateTimeOffset
+        {
+            get => DateTimeOffset.FromUnixTimeSeconds(end_date_utc._seconds)
+                    .AddTicks(end_date_utc._nanoseconds / 100);
+        }
+
         [JsonPropertyName("end_date_utc2")]
-        public DateTimeOffset? end_date_utc2 { get; set; }
-
-
-
-        [JsonPropertyName("statusInfo")]
-        public StatusInfo? statusInfo { get; set; }
-
-        [JsonPropertyName("preload")]
-        public List<Preload> preload { get; set; } 
-
-        [JsonPropertyName("geolocation")]
-        public Geolocation geolocation { get; set; }
+        public DateTimeOffset? end_date_utc2 { get; set; } = DateTimeOffset.UtcNow;
 
         [JsonPropertyName("scheduled_programming_date")]
         public Timestamp scheduled_programming_date { get; set; }
 
+        [JsonPropertyName("scheduled_programming_dateTimeOffset")]
+        public DateTimeOffset scheduled_programming_dateTimeOffset {
+            get => DateTimeOffset.FromUnixTimeSeconds(scheduled_programming_date._seconds)
+                    .AddTicks(scheduled_programming_date._nanoseconds / 100);
+        }
+
         [JsonPropertyName("scheduled_limit_date")]
         public Timestamp scheduled_limit_date { get; set; }
 
+        [JsonPropertyName("scheduled_limit_dateTimeOffset")]
+        public DateTimeOffset scheduled_limit_dateTimeOffset
+        {
+            get => DateTimeOffset.FromUnixTimeSeconds(scheduled_limit_date._seconds)
+                    .AddTicks(scheduled_limit_date._nanoseconds / 100);
+        }
+        #endregion
+
+        #region Variables Complejas
+        [JsonPropertyName("statusInfo")]
+        public StatusInfo? statusInfo { get; set; } = new StatusInfo();
+
+        [JsonPropertyName("preload")]
+        public List<Preload> preload { get; set; }
+
+        [JsonPropertyName("geolocation")]
+        public Geolocation geolocation { get; set; } = new Geolocation();
+
         [JsonPropertyName("modules_config")]
-        public ModulesConfig modules_config { get; set; }
+        public ModulesConfig modules_config { get; set; } = new ModulesConfig();
 
         [JsonPropertyName("elements")]
-        public List<Element> elements { get; set; }
+        public List<Element> elements { get; set; } = new List<Element>();
+        #endregion
 
     }
 
-    #region Geolocation Classes
-    public partial class Geolocation
+    public partial class Timestamp
     {
-        public void Initialize()
-        {
-            geopoint ??= new Geopoint();
-        }
-
-        [JsonPropertyName("geohash")]
-        public string geohash { get; set; } = "";
-
-        [JsonPropertyName("geopoint")]
-        public Geopoint geopoint { get; set; }
-    }
-
-    public partial class Geopoint
-    {
-        [JsonPropertyName("_latitude")]
-        public double _latitude { get; set; } = 0;
-
-        [JsonPropertyName("_longitude")]
-        public double _longitude { get; set; } = 0;
-    }
-    #endregion
-
-    public partial class Timestamp {         
         [JsonPropertyName("_seconds")]
         public long _seconds { get; set; } = 0;
 
         [JsonPropertyName("_nanoseconds")]
         public long _nanoseconds { get; set; } = 0;
+    }
+
+    public partial class StatusInfo
+    {
+        [JsonPropertyName("txt")]
+        public string txt { get; set; } = "Programada";
+
+        [JsonPropertyName("color")]
+        public string color { get; set; } = "#118AB2";
     }
 
     public partial class Preload
@@ -164,15 +177,31 @@ namespace TP_ITSM.Models.Execon
         [JsonPropertyName("frmParentOwner")]
         public string frmParentOwner { get; set; } = "No disponible";
     }
-    
-    public partial class StatusInfo
-    {
-        [JsonPropertyName("txt")]
-        public string txt { get; set; } = "Programada";
 
-        [JsonPropertyName("color")]
-        public string color { get; set; } = "#118AB2";
+    #region Geolocation Classes
+    public partial class Geolocation
+    {
+        public void Initialize()
+        {
+            geopoint ??= new Geopoint();
+        }
+
+        [JsonPropertyName("geohash")]
+        public string geohash { get; set; } = "";
+
+        [JsonPropertyName("geopoint")]
+        public Geopoint geopoint { get; set; }
     }
+
+    public partial class Geopoint
+    {
+        [JsonPropertyName("_latitude")]
+        public double _latitude { get; set; } = 0;
+
+        [JsonPropertyName("_longitude")]
+        public double _longitude { get; set; } = 0;
+    }
+    #endregion
 
     #region ModulesConfig Classes
     public partial class ModulesConfig
@@ -250,57 +279,41 @@ namespace TP_ITSM.Models.Execon
     }
     #endregion
 
-    #region
+    #region Element Classes
     public partial class Element
     {
         public void Initialize()
         {
-            user                 ??= new User();
-            items                ??= new List<Item>();
-            started_at_utc       ??= new Timestamp();
-            last_modified_at_utc ??= new Timestamp();
-            if (type == "map")
-            {                 
-                isMap = true;
+                user ??= new User();
                 info ??= new Info();
-            }
-            else if (isMap == false)
-            {
-                info = null;
-            } 
+                //items ??= new List();
+            //    started_at_utc ??= new Timestamp();
+            //    last_modified_at_utc ??= new Timestamp();
+            //    if (type == "map")
+            //    {
+            //        isMap = true;
+            //    }
+            //    else if (isMap == false)
+            //    {
+            //        info = null;
+            //    }
         }
 
+        #region Variables simples
         [JsonPropertyName("title")]
         public string title { get; set; } = "No disponible";
 
         [JsonPropertyName("type")]
         public string type { get; set; } = "No disponible";
 
-        [JsonPropertyName("items")]
-        public List<Item> items { get; set; }
-
-        [JsonPropertyName("user")]
-        public User user { get; set; }
-
-        [JsonPropertyName("info")]
-        public Info info { get; set; }
+        [JsonPropertyName("url_map")]
+        public string url_map { get; set; } = "No disponible";
 
         [JsonPropertyName("started_by")]
         public string started_by { get; set; } = "No disponible";
 
-        [JsonPropertyName("started_at_utc")]
-        public Timestamp started_at_utc { get; set; }
-
         [JsonPropertyName("last_modified_by")]
         public string last_modified_by { get; set; } = "No disponible";
-
-        [JsonPropertyName("last_modified_at_utc")]
-        public Timestamp last_modified_at_utc { get; set; }
-
-        [JsonPropertyName("url_map")]
-        public string url_map { get; set; } = "No disponible";
-
-
 
         [JsonPropertyName("isComment")]
         public bool? isComment { get; set; } = false;
@@ -316,27 +329,79 @@ namespace TP_ITSM.Models.Execon
 
         [JsonPropertyName("isSignature")]
         public bool? isSignature { get; set; } = false;
+        #endregion
+
+        #region Variables con Timestamp y DateTimeOffset
+        [JsonPropertyName("started_at_utc")]
+        public Timestamp started_at_utc { get; set; }
+
+        [JsonPropertyName("started_at_utc_dateTimeOffset")]
+        public DateTimeOffset started_at_utc_dateTimeOffset
+        {
+            get => DateTimeOffset.FromUnixTimeSeconds(started_at_utc._seconds)
+                    .AddTicks(started_at_utc._nanoseconds / 100);
+        }
+
+        [JsonPropertyName("last_modified_at_utc")]
+        public Timestamp last_modified_at_utc { get; set; }
+
+        [JsonPropertyName("last_modified_at_utc_dateTimeOffset")]
+        public DateTimeOffset last_modified_at_utc_dateTimeOffset
+        {
+            get => DateTimeOffset.FromUnixTimeSeconds(last_modified_at_utc._seconds)
+                    .AddTicks(last_modified_at_utc._nanoseconds / 100);
+        }
+        #endregion
+
+        #region Variables Complejas
+        [JsonPropertyName("user")]
+        public User user { get; set; } = new User();
+
+        [JsonPropertyName("info")]
+        public Info info { get; set; } //= new Info();
+
+        [JsonPropertyName("items")]
+        public List<Item> items { get; set; } = [];
+
+        #endregion
+
+    }
+
+    public partial class User
+    {
+        [JsonPropertyName("email")]
+        public string? email { get; set; } = "No disponible";
+
+        [JsonPropertyName("name")]
+        public string? name { get; set; } = "No disponible";
+
+        [JsonPropertyName("photo_url")]
+        public string? photo_url { get; set; } = "No disponible";
+
+        [JsonPropertyName("uid")]
+        public string? uid { get; set; } = "No disponible";
     }
 
     public partial class Info
     {
-        public void Initialize()
-        {
-            geolocation ??= new Geolocation();
-            check_date_utc ??= new Timestamp();
-        }
-
         [JsonPropertyName("address")]
         public string address { get; set; } = "No disponible";
 
         [JsonPropertyName("check_date")]
-        public DateTimeOffset check_date { get; set; } = DateTimeOffset.UtcNow;
+        public string check_date { get; set; } = "No disponible";
 
         [JsonPropertyName("check_date_utc")]
-        public Timestamp check_date_utc { get; set; } 
+        public Timestamp check_date_utc { get; set; }
+
+        [JsonPropertyName("check_date_utc_dateTimeOffset")]
+        public DateTimeOffset check_date_utc_dateTimeOffset
+        {
+            get => DateTimeOffset.FromUnixTimeSeconds(check_date_utc._seconds)
+                    .AddTicks(check_date_utc._nanoseconds / 100);
+        }
 
         [JsonPropertyName("geolocation")]
-        public Geolocation geolocation { get; set; }
+        public Geolocation geolocation { get; set; } = new Geolocation();
 
         [JsonPropertyName("latitude")]
         public string latitude { get; set; } = "No disponible";
@@ -357,9 +422,6 @@ namespace TP_ITSM.Models.Execon
         [JsonPropertyName("type")]
         public string type { get; set; } = "No disponible";
 
-        [JsonPropertyName("value")]
-        public Value value { get; set; }
-
         [JsonPropertyName("thumbnail_url")]
         public string thumbnail_url { get; set; } = "No disponible";
 
@@ -371,32 +433,19 @@ namespace TP_ITSM.Models.Execon
 
         [JsonPropertyName("isCheck")]
         public bool? isCheck { get; set; } = false;
-    }
 
-    public partial struct Value
-    {
-        public bool? Bool;
-        public string String;
+        [JsonPropertyName("isSignature")]
+        public bool? isSignature { get; set; } = false;
 
-        public static implicit operator Value(bool Bool) => new Value { Bool = Bool };
-        public static implicit operator Value(string String) => new Value { String = String };
+        [JsonPropertyName("isQuestionnaires")]
+        public bool? isQuestionnaires { get; set; } = false;
+
+        [JsonPropertyName("value")]
+        [JsonConverter(typeof(ItemValueJsonConverter))]
+        public ItemValue value { get; set; }
     }
 
     #endregion
-    
-    public partial class User
-    {
-        [JsonPropertyName("email")]
-        public string? email { get; set; } = "No disponible";
 
-        [JsonPropertyName("name")]
-        public string? name { get; set; } = "No disponible";
-
-        [JsonPropertyName("photo_url")]
-        public string? photo_url { get; set; } = "No disponible";
-
-        [JsonPropertyName("uid")]
-        public string? uid { get; set; } = "No disponible";
-    }
     #endregion
 }

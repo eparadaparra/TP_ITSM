@@ -2,6 +2,7 @@
 using Newtonsoft.Json.Linq;
 using System.Collections.Specialized;
 using System.Net.Http.Headers;
+using System.Net.Mail;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
@@ -10,6 +11,7 @@ using System.Web;
 using TP_ITSM.Models;
 using TP_ITSM.Models.Execon;
 using TP_ITSM.Models.Trackpoint;
+using TP_ITSM.Custom;
 using TP_ITSM.Services.Trackpoint;
 using Preload = TP_ITSM.Models.Trackpoint.Preload;
 
@@ -344,11 +346,9 @@ namespace TP_ITSM.Services.Execon
         {
             try
             {
-                var body = requestBody.ToString(); // Convertir a string primero
-                JObject json = JObject.Parse(body);
-                JToken data = json["data"];
+                var upByStatus = getDataByStatus(requestBody);
 
-                var (successUpd, _responseText) = await UpPatchITSM("Task", "A0AC2D7AD07A431FAB8C96BCB3A63288", data);
+                var (successUpd, _responseText) = await UpPatchITSM("Task", requestBody.data.preload[0].frmRecIdTask, upByStatus);
                 if (!successUpd)
                     return (successUpd, _responseText);
 
@@ -358,6 +358,63 @@ namespace TP_ITSM.Services.Execon
             {
                 return (false, ex.Message);
             }
+        }
+
+        private JObject getDataByStatus(ResponseTaskTP body)
+        {
+            var data = body.data;
+            var statusITSM = Utilities.GetStatusMap( data.status, data.statusInfo is null ? "Programada" : data.statusInfo.txt );
+            var jsonUp = new JObject {
+                ["data"] = new JObject()
+            };
+
+            
+
+            if (data.status == "1" && data.statusInfo is not null)
+            {
+                (jsonUp["data"] as JObject).Add("EX_FirebaseID",    data.firebase_id);
+                (jsonUp["data"] as JObject).Add("Owner",            new MailAddress( data.scheduled_user_email).User);
+                (jsonUp["data"] as JObject).Add("Status",           statusITSM);
+                (jsonUp["data"] as JObject).Add("Details",          data.scheduled_instructions);
+                (jsonUp["data"] as JObject).Add("PlannedStartDate", data.scheduled_programming_dateTimeOffset);
+                (jsonUp["data"] as JObject).Add("AssignedDateTime", DateTimeOffset.UtcNow);
+            }
+
+            if (data.status == "2" && (data.statusInfo?.txt is "Abierta" or "En Revisión"))
+            {
+                (jsonUp["data"] as JObject).Add("EX_FirebaseID",    data.firebase_id);
+                (jsonUp["data"] as JObject).Add("Owner",            new MailAddress(data.scheduled_user_email).User);
+                (jsonUp["data"] as JObject).Add("Status",           statusITSM);
+                (jsonUp["data"] as JObject).Add("Details",          data.scheduled_instructions);
+                (jsonUp["data"] as JObject).Add("PlannedStartDate", data.scheduled_programming_dateTimeOffset);
+
+                //TODO: Insertar Attachments con Link de detalle de TP
+            }
+
+            if (data.status == "3" && (data.statusInfo?.txt is "Autorizada" or "Cerrada"))
+            {
+                //var subStatusTask = String.Empty;
+
+                //if (data.elements is not null)
+                //{ 
+
+                //}
+                //    data.elements.Where(e => e.title == "Cierre de actividad").FirstOrDefault() is not null 
+                //    ? data.elements.Where(i => i.title == "Resolución de tarea").FirstOrDefault()?.selected_option
+                //    : ;
+
+
+                (jsonUp["data"] as JObject).Add("EX_FirebaseID", data.firebase_id);
+                (jsonUp["data"] as JObject).Add("Owner", new MailAddress(data.scheduled_user_email).User);
+                (jsonUp["data"] as JObject).Add("Status", statusITSM);
+                (jsonUp["data"] as JObject).Add("ResolvedBy", "InternalServices");
+                (jsonUp["data"] as JObject).Add("Details", data.scheduled_instructions);
+                (jsonUp["data"] as JObject).Add("PlannedStartDate", data.scheduled_programming_dateTimeOffset);
+
+                //TODO: Insertar Attachments con Link de detalle de TP
+            }
+
+            return jsonUp;
         }
 
         private JsonElement ConvertModelToJsonElement<T>(T model) => JsonDocument.Parse(JsonConvert.SerializeObject(model)).RootElement.Clone();
