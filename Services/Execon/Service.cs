@@ -2,29 +2,31 @@
 using Newtonsoft.Json.Linq;
 using System.Collections.Specialized;
 using System.Net.Http.Headers;
-using System.Net.Mail;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Web;
+using TP_ITSM.Custom;
 using TP_ITSM.Models;
 using TP_ITSM.Models.Execon;
 using TP_ITSM.Models.Trackpoint;
-using TP_ITSM.Custom;
 using TP_ITSM.Services.Trackpoint;
 using Preload = TP_ITSM.Models.Trackpoint.Preload;
 
 namespace TP_ITSM.Services.Execon
 {
-    public class Service : IExeconServices
+    public class Services : IExeconServices
     {
         #region Declaración de Variables
         private string? _url;
         private string? _ambiente;
-        private List<string> _lstLogEvent = [];
-        private string? _expirationDate;
         private string _responseText;
+
+        private int _expirationDate;
+        private int _timeOutValue;
+
+        private List<string> _lstLogEvent = [];
 
         private ActivityReq _tpRequest = new ActivityReq();
         private Preload _preloadRequest = new Preload();
@@ -33,7 +35,7 @@ namespace TP_ITSM.Services.Execon
         private readonly Trackpoint.ITrackpointServices _tpServices;
         #endregion
 
-        public Service(ITrackpointServices services)
+        public Services(ITrackpointServices services)
         {
             _tpServices = services;
             var builder = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory()).AddJsonFile("appsettings.json").Build();
@@ -41,19 +43,27 @@ namespace TP_ITSM.Services.Execon
             _ambiente = Boolean.Parse(builder.GetSection("SettingsExecon:EnableDev").Value!)
                     ? builder.GetSection("HttpClient:dev").Value
                     : builder.GetSection("HttpClient:pro").Value;
-            _expirationDate = builder.GetSection("SettingsExecon:ExpirationDate").Value;
+            _expirationDate = Int32.Parse(builder.GetSection("SettingsExecon:ExpirationDate").Value!);
+            _timeOutValue   = Int32.Parse(builder.GetSection("SettingsExecon:TimeOutSeconds").Value!);
         }
 
         private HttpClient CreateHttpClient()
         {
+            // Generamos un identificador único para la idempotencia
+            var idempotencyKey = Guid.NewGuid().ToString();
+
             HttpClient _client = new HttpClient();
+            // Agregamos el encabezado de idempotencia
+            _client.DefaultRequestHeaders.Remove("Idempotency-Key");
+            _client.DefaultRequestHeaders.Add("Idempotency-Key", idempotencyKey);
             _client.DefaultRequestHeaders.Accept.Clear();
             _client.BaseAddress = new Uri(_url!);
-            _client.Timeout = TimeSpan.FromMinutes(10);
+            _client.Timeout = TimeSpan.FromSeconds(_timeOutValue); //.FromMinutes(10);
             _client.DefaultRequestHeaders.AcceptCharset.ParseAdd("utf-8");
             _client.DefaultRequestHeaders.Accept.Add(
                 new MediaTypeWithQualityHeaderValue("application/json")
             );
+
 
             _client.DefaultRequestHeaders.Clear();
             return _client;
@@ -144,7 +154,7 @@ namespace TP_ITSM.Services.Execon
         {
             try
             {
-                string select = "RecId, EX_IdSitio, Name, EX_Zona, EX_PlazaCobertura, EX_Latitud, EX_Longitud, Address, EX_Colonia, City, Zip, State";
+                string select = "RecId, EX_IdSitio, Name, EX_Zona, EX_PlazaCobertura, EX_Latitud, EX_Longitud, Address, EX_Colonia, City, Zip, State, EX_Geohash";
 
                 bool response = await GetFilter("Location", $"RecId eq '{recId}'", select);
 
@@ -167,7 +177,7 @@ namespace TP_ITSM.Services.Execon
         {
             try
             {
-                string select = "RecId, DisplayName, Supervisor, Title, Department, Team, Status, Disabled";
+                string select = "RecId, DisplayName, Supervisor, Title, Department, Team, Status, Disabled, PrimaryEmail";
 
                 bool response = await GetFilter("Employee", $"LoginID eq '{owner}'", select);
 
@@ -280,7 +290,7 @@ namespace TP_ITSM.Services.Execon
 
                 #region Asignaciones puntuales
                 _tpRequest.scheduled_name_event = String.Concat( task.AssignmentID, " | ", parentTask.ParentNumber, " | P", task.Priority, " | ", location.EX_IdSitio, " | ", location.Name);
-                _tpRequest.scheduled_expiration_date = Int32.Parse(_expirationDate!);
+                _tpRequest.scheduled_expiration_date = _expirationDate!;
                 _tpRequest.id_user = _tpAuth.uuid;
                 #endregion
 
@@ -346,7 +356,7 @@ namespace TP_ITSM.Services.Execon
         {
             try
             {
-                var upByStatus = getDataByStatus(requestBody);
+                var upByStatus = JsonResponse.TaskITSM(requestBody);
 
                 var (successUpd, _responseText) = await UpPatchITSM("Task", requestBody.data.preload[0].frmRecIdTask, upByStatus);
                 if (!successUpd)
@@ -358,63 +368,6 @@ namespace TP_ITSM.Services.Execon
             {
                 return (false, ex.Message);
             }
-        }
-
-        private JObject getDataByStatus(ResponseTaskTP body)
-        {
-            var data = body.data;
-            var statusITSM = Utilities.GetStatusMap( data.status, data.statusInfo is null ? "Programada" : data.statusInfo.txt );
-            var jsonUp = new JObject {
-                ["data"] = new JObject()
-            };
-
-            
-
-            if (data.status == "1" && data.statusInfo is not null)
-            {
-                (jsonUp["data"] as JObject).Add("EX_FirebaseID",    data.firebase_id);
-                (jsonUp["data"] as JObject).Add("Owner",            new MailAddress( data.scheduled_user_email).User);
-                (jsonUp["data"] as JObject).Add("Status",           statusITSM);
-                (jsonUp["data"] as JObject).Add("Details",          data.scheduled_instructions);
-                (jsonUp["data"] as JObject).Add("PlannedStartDate", data.scheduled_programming_dateTimeOffset);
-                (jsonUp["data"] as JObject).Add("AssignedDateTime", DateTimeOffset.UtcNow);
-            }
-
-            if (data.status == "2" && (data.statusInfo?.txt is "Abierta" or "En Revisión"))
-            {
-                (jsonUp["data"] as JObject).Add("EX_FirebaseID",    data.firebase_id);
-                (jsonUp["data"] as JObject).Add("Owner",            new MailAddress(data.scheduled_user_email).User);
-                (jsonUp["data"] as JObject).Add("Status",           statusITSM);
-                (jsonUp["data"] as JObject).Add("Details",          data.scheduled_instructions);
-                (jsonUp["data"] as JObject).Add("PlannedStartDate", data.scheduled_programming_dateTimeOffset);
-
-                //TODO: Insertar Attachments con Link de detalle de TP
-            }
-
-            if (data.status == "3" && (data.statusInfo?.txt is "Autorizada" or "Cerrada"))
-            {
-                //var subStatusTask = String.Empty;
-
-                //if (data.elements is not null)
-                //{ 
-
-                //}
-                //    data.elements.Where(e => e.title == "Cierre de actividad").FirstOrDefault() is not null 
-                //    ? data.elements.Where(i => i.title == "Resolución de tarea").FirstOrDefault()?.selected_option
-                //    : ;
-
-
-                (jsonUp["data"] as JObject).Add("EX_FirebaseID", data.firebase_id);
-                (jsonUp["data"] as JObject).Add("Owner", new MailAddress(data.scheduled_user_email).User);
-                (jsonUp["data"] as JObject).Add("Status", statusITSM);
-                (jsonUp["data"] as JObject).Add("ResolvedBy", "InternalServices");
-                (jsonUp["data"] as JObject).Add("Details", data.scheduled_instructions);
-                (jsonUp["data"] as JObject).Add("PlannedStartDate", data.scheduled_programming_dateTimeOffset);
-
-                //TODO: Insertar Attachments con Link de detalle de TP
-            }
-
-            return jsonUp;
         }
 
         private JsonElement ConvertModelToJsonElement<T>(T model) => JsonDocument.Parse(JsonConvert.SerializeObject(model)).RootElement.Clone();
@@ -531,6 +484,13 @@ namespace TP_ITSM.Services.Execon
                 queryParams["select"] = select;
 
                 HttpClient client = CreateHttpClient();
+                // Generamos un identificador único para la idempotencia
+                var idempotencyKey = Guid.NewGuid().ToString();
+                // Agregamos el encabezado de idempotencia
+                client.DefaultRequestHeaders.Remove("Idempotency-Key");
+                client.DefaultRequestHeaders.Add("Idempotency-Key", idempotencyKey);
+
+
                 HttpResponseMessage response = await client.GetAsync($"{_ambiente}/api/Obj/Filter?{queryParams}");
                 _responseText = await response.Content.ReadAsStringAsync();
 
@@ -547,13 +507,23 @@ namespace TP_ITSM.Services.Execon
         {
             try
             {
+                Console.WriteLine("Tipo: " + objeto);
+                Console.WriteLine("RecId: " + recId);
                 Console.WriteLine("Tipo de var update: " + update.GetType().ToString());
+                Console.WriteLine(update);
                 var content = new StringContent(JsonConvert.SerializeObject(update), Encoding.UTF8, "application/json");
                 NameValueCollection queryParams = HttpUtility.ParseQueryString(string.Empty);
                 queryParams["objeto"] = objeto;
                 queryParams["recId"]  = recId;
 
                 HttpClient client = CreateHttpClient();
+                
+                // Generamos un identificador único para la idempotencia
+                var idempotencyKey = Guid.NewGuid().ToString();
+                // Agregamos el encabezado de idempotencia
+                client.DefaultRequestHeaders.Remove("Idempotency-Key");
+                client.DefaultRequestHeaders.Add("Idempotency-Key", idempotencyKey);
+
                 HttpResponseMessage response = await client.PatchAsync($"{_ambiente}/api/Obj/Update?{queryParams}", content);
                 _responseText = await response.Content.ReadAsStringAsync();
 
@@ -576,5 +546,21 @@ namespace TP_ITSM.Services.Execon
             return odataResponse.Value[0];
         }
 
+        public async Task SendPostITSM(string metodo, StringContent httpContent)
+        {
+            try
+            {
+                HttpClient client = CreateHttpClient();
+                HttpResponseMessage response = await client.PostAsync(metodo, httpContent);
+                _responseText = await response.Content.ReadAsStringAsync();
+
+                //return response.IsSuccessStatusCode;
+            }
+            catch (Exception ex)
+            {
+                _responseText = ex.Message;
+                //return false;
+            }
+        }
     }
 }

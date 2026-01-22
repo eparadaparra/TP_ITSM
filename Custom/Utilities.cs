@@ -41,11 +41,18 @@ namespace TP_ITSM.Custom
                 ("2", "Rechazada")  => "Accepted",
                 ("3", "En Revisión")=> "Waiting",
                 ("3", "Autorizada") => "Completed",
-                ("2", "Cerrada")    => "Completed",
-                ("4", _) or ("5", _) or ("6", _) => "Cancelled",
+                ("3", "Cerrada")    => "Completed",
+                ("0", _) or ("4", _) or ("5", _) or ("6", _) => "Cancelled",
                 _ => ""
             };
         }
         #endregion
+
+        public static int DiferenciaMinutos(DateTimeOffset inicio, DateTimeOffset fin)
+        {
+            // Usa Math.Abs si siempre quieres valor positivo
+            TimeSpan diferencia = fin > inicio ? fin - inicio : inicio - fin;
+            return (int)diferencia.TotalMinutes; // Trunca decimales
+        }
     }
 }

@@ -27,5 +27,8 @@ namespace TP_ITSM.Models.Execon
 
         [JsonPropertyName("Title")]
         public string Title { get; set; }
+
+        [JsonPropertyName("PrimaryEmail")]
+        public string PrimaryEmail { get; set; }
     }
 }

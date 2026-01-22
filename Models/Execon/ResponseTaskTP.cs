@@ -65,6 +65,12 @@ namespace TP_ITSM.Models.Execon
 
         [JsonPropertyName("classification_subcategory_name")]
         public string classification_subcategory_name { get; set; } = "No disponible";
+
+        [JsonPropertyName("address_checkIn")]
+        public string address_checkIn { get; set; } = "No disponible";
+
+        [JsonPropertyName("deletedBy")]
+        public string deletedBy { get; set; } = "No disponible";
         #endregion
 
         #region Variables con Timestamp y DateTimeOffset
@@ -157,10 +163,10 @@ namespace TP_ITSM.Models.Execon
         public string frmRecIdTask { get; set; } = "No disponible";
 
         [JsonPropertyName("frmAssignmentId")]
-        public string frmAssignmentId { get; set; } = "No disponible";
+        public int frmAssignmentId { get; set; }
 
         [JsonPropertyName("frmParentNumber")]
-        public string frmParentNumber { get; set; } = "No disponible";
+        public int frmParentNumber { get; set; }
 
         [JsonPropertyName("frmParentCategory")]
         public string frmParentCategory { get; set; } = "No disponible";
@@ -286,17 +292,6 @@ namespace TP_ITSM.Models.Execon
         {
                 user ??= new User();
                 info ??= new Info();
-                //items ??= new List();
-            //    started_at_utc ??= new Timestamp();
-            //    last_modified_at_utc ??= new Timestamp();
-            //    if (type == "map")
-            //    {
-            //        isMap = true;
-            //    }
-            //    else if (isMap == false)
-            //    {
-            //        info = null;
-            //    }
         }
 
         #region Variables simples
@@ -410,7 +405,6 @@ namespace TP_ITSM.Models.Execon
         public string longitude { get; set; } = "No disponible";
     }
 
-    #region Item Classes
     public partial class Item
     {
         [JsonPropertyName("title")]
@@ -442,10 +436,8 @@ namespace TP_ITSM.Models.Execon
 
         [JsonPropertyName("value")]
         [JsonConverter(typeof(ItemValueJsonConverter))]
-        public ItemValue value { get; set; }
+        public ItemValue? value { get; set; }
     }
-
-    #endregion
 
     #endregion
 }

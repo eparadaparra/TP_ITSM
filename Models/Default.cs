@@ -21,4 +21,19 @@ namespace TP_ITSM.Models
         public List<T>? Value { get; set; }
 
     }
+
+    public class NotaITSM
+    {
+        [JsonPropertyName("object")]
+        public string Object { get; set; }
+
+        [JsonPropertyName("objectNumber")]
+        public string objectNumber { get; set; }
+
+        [JsonPropertyName("subject")]
+        public string subject { get; set; }
+
+        [JsonPropertyName("note")]
+        public string note { get; set; }
+    }
 }

@@ -13,7 +13,7 @@ builder.Services.AddCors(option =>
     )
 );
 
-builder.Services.AddScoped<IExeconServices, TP_ITSM.Services.Execon.Service>();
+builder.Services.AddScoped<IExeconServices, TP_ITSM.Services.Execon.Services>();
 builder.Services.AddScoped<ITrackpointServices, TP_ITSM.Services.Trackpoint.Service>();
 
 // Add services to the container.

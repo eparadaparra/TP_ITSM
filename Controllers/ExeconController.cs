@@ -243,6 +243,10 @@ namespace TP_ITSM.Controllers
         public async Task<IActionResult> UpTaskITSM([FromBody] object body)
         {
             ResponseTaskTP newBody = JsonSerializer.Deserialize<ResponseTaskTP>(body.ToString());
+
+            if (!newBody.data.created_api)
+                return Ok( new { Status = StatusCodes.Status200OK, Message = "Por el Momento solo se pueden procesar tareas enviadas por el ITSM" });
+
             var (success, result) = await _services.UpTask(newBody);
 
             if (success)

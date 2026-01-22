@@ -34,6 +34,9 @@ namespace TP_ITSM.Models.Execon
         [JsonPropertyName("EX_PlazaCobertura")]
         public string EX_PlazaCobertura { get; set; }
 
+        [JsonPropertyName("EX_Geohash")]
+        public string EX_Geohash { get; set; }
+
         [JsonPropertyName("EX_Latitud")]
         public double EX_Latitud { get; set; } = 0;
 

@@ -22,13 +22,15 @@ namespace TP_ITSM.Services.Trackpoint
         private List<string> _lstLogEvent = [];
         private TpAuthResponse _tokenResponse;
 
+        private int _timeOutValue;
         private string _responseText;
         #endregion
 
         public Service()
         {
             var builder = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory()).AddJsonFile("appsettings.json").Build();
-            _url          = builder.GetSection("HttpClientTP:url").Value;
+            _timeOutValue   = Int32.Parse(builder.GetSection("SettingsExecon:TimeOutSeconds").Value!);
+            _url            = builder.GetSection("HttpClientTP:url").Value;
             _custumerKey    = builder.GetSection("HttpClientTP:customer_key").Value;
             _autorization   = builder.GetSection("HttpClientTP:autorization").Value;
             _user           = builder.GetSection("HttpClientTP:email").Value;
@@ -38,10 +40,13 @@ namespace TP_ITSM.Services.Trackpoint
 
         private  HttpClient CreateHttpClient(bool token = true)
         {
+            // Generamos un identificador único para la idempotencia
+            var idempotencyKey = Guid.NewGuid().ToString();
+
             HttpClient _client = new HttpClient();
             _client.DefaultRequestHeaders.Accept.Clear();
             _client.BaseAddress = new Uri(_url!);
-            _client.Timeout = TimeSpan.FromMinutes(10);
+            _client.Timeout = TimeSpan.FromSeconds(_timeOutValue); //.FromMinutes(10);
             _client.DefaultRequestHeaders.Add("api-customer-key", _custumerKey);
             _client.DefaultRequestHeaders.AcceptCharset.ParseAdd("utf-8");
             _client.DefaultRequestHeaders.Accept.Add( 
@@ -50,6 +55,10 @@ namespace TP_ITSM.Services.Trackpoint
             _client.DefaultRequestHeaders.Authorization = token
                 ? new AuthenticationHeaderValue("Bearer", _token)
                 : new AuthenticationHeaderValue("Bearer", _autorization);
+
+            // Agregamos el encabezado de idempotencia
+            _client.DefaultRequestHeaders.Remove("Idempotency-Key");
+            _client.DefaultRequestHeaders.Add("Idempotency-Key", idempotencyKey);
 
             return _client;
         }
@@ -208,12 +217,18 @@ namespace TP_ITSM.Services.Trackpoint
             {
                 Console.WriteLine(request.GetType());
                 await AuthTp();
-                HttpClient httpClient = new HttpClient();
-                httpClient.BaseAddress = new Uri(_url);
-                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _token);
-                httpClient.DefaultRequestHeaders.Add("api-customer-key", _custumerKey);
+                HttpClient client = new HttpClient();
+                // Generamos un identificador único para la idempotencia
+                var idempotencyKey = Guid.NewGuid().ToString();
+                // Agregamos el encabezado de idempotencia
+                client.DefaultRequestHeaders.Remove("Idempotency-Key");
+                client.DefaultRequestHeaders.Add("Idempotency-Key", idempotencyKey);
+                client.Timeout = TimeSpan.FromSeconds(_timeOutValue); //.FromMinutes(10);
+                client.BaseAddress = new Uri(_url);
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _token);
+                client.DefaultRequestHeaders.Add("api-customer-key", _custumerKey);
 
-                var response = await httpClient.PostAsJsonAsync("/apiScheduledProgrammingAdd", request);
+                var response = await client.PostAsJsonAsync("/apiScheduledProgrammingAdd", request);
                 _responseText = await response.Content.ReadAsStringAsync();
 
                 if (response.IsSuccessStatusCode)
@@ -250,12 +265,18 @@ namespace TP_ITSM.Services.Trackpoint
             try
             {
                 await AuthTp();
-                HttpClient httpClient = new HttpClient();
-                httpClient.BaseAddress = new Uri(_url);
-                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _token);
-                httpClient.DefaultRequestHeaders.Add("api-customer-key", _custumerKey);
+                HttpClient client = new HttpClient();
+                // Generamos un identificador único para la idempotencia
+                var idempotencyKey = Guid.NewGuid().ToString();
+                // Agregamos el encabezado de idempotencia
+                client.DefaultRequestHeaders.Remove("Idempotency-Key");
+                client.DefaultRequestHeaders.Add("Idempotency-Key", idempotencyKey);
+                client.Timeout = TimeSpan.FromSeconds(_timeOutValue); //.FromMinutes(10);
+                client.BaseAddress = new Uri(_url);
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _token);
+                client.DefaultRequestHeaders.Add("api-customer-key", _custumerKey);
 
-                var response = await httpClient.PostAsync("/updateEventWebhook", content);
+                var response = await client.PostAsync("/updateEventWebhook", content);
                 _responseText = await response.Content.ReadAsStringAsync();
 
                 if (response.IsSuccessStatusCode)
