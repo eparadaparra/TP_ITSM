@@ -22,6 +22,7 @@ builder.Services.AddControllers()
     .AddJsonOptions( o =>
         {
             o.JsonSerializerOptions.Converters.Add(new ItemValueJsonConverter());
+            o.JsonSerializerOptions.Converters.Add(new StringToIntConverter());
         }
     );
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle

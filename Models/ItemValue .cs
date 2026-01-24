@@ -50,4 +50,27 @@ namespace TP_ITSM.Models
         }
     }
 
+    public class StringToIntConverter : JsonConverter<int>
+    {
+        public override int Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            if (reader.TokenType == JsonTokenType.String)
+            {
+                if (int.TryParse(reader.GetString(), out int result))
+                    return result;
+            }
+            else if (reader.TokenType == JsonTokenType.Number)
+            {
+                return reader.GetInt32();
+            }
+
+            return 0; // o lanzar una excepción
+        }
+
+        public override void Write(Utf8JsonWriter writer, int value, JsonSerializerOptions options)
+        {
+            writer.WriteNumberValue(value);
+        }
+    }
+
 }

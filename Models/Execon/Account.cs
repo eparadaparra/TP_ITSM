@@ -4,8 +4,8 @@ namespace TP_ITSM.Models.Execon
 {
     public class AccountInfo
     {
-        //[JsonPropertyName("RecId")]
-        //public string RecId { get; set; }
+        [JsonPropertyName("RecId")]
+        public string RecId { get; set; }
 
         [JsonPropertyName("Name")]
         public string Name { get; set; }

@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
+
 using TP_ITSM.Models;
 using TP_ITSM.Models.Execon;
 using TP_ITSM.Services.Execon;
@@ -243,6 +244,20 @@ namespace TP_ITSM.Controllers
         public async Task<IActionResult> UpTaskITSM([FromBody] object body)
         {
             ResponseTaskTP newBody = JsonSerializer.Deserialize<ResponseTaskTP>(body.ToString());
+            
+            //Preload? preload = new Preload();
+            //TaskInfo? task = new TaskInfo();
+
+            //preload = newBody.data.preload is not null ? newBody.data.preload[0] : null;
+            //var (successTask, responseTask) = await _services.GetTask(preload.frmAssignmentId);
+            //if (successTask) 
+            //{
+            //    task = successTask
+            //        ? JsonSerializer.Deserialize<TaskInfo>(responseTask.ToString())
+            //        : null;
+            //}
+            
+
 
             if (!newBody.data.created_api)
                 return Ok( new { Status = StatusCodes.Status200OK, Message = "Por el Momento solo se pueden procesar tareas enviadas por el ITSM" });

@@ -4,8 +4,8 @@ namespace TP_ITSM.Models.Execon
 {
     public class EmployeeInfo
     {
-        //[JsonPropertyName("RecId")]
-        //public string RecId { get; set; }
+        [JsonPropertyName("RecId")]
+        public string RecId { get; set; }
 
         [JsonPropertyName("Department")]
         public string Department { get; set; }
@@ -30,5 +30,8 @@ namespace TP_ITSM.Models.Execon
 
         [JsonPropertyName("PrimaryEmail")]
         public string PrimaryEmail { get; set; }
+
+        [JsonPropertyName("LoginId")]
+        public string LoginId { get; set; }
     }
 }

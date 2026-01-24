@@ -2,6 +2,7 @@
 using Newtonsoft.Json.Linq;
 using System.Collections.Specialized;
 using System.Net.Http.Headers;
+using System.Net.Mail;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
@@ -28,10 +29,17 @@ namespace TP_ITSM.Services.Execon
 
         private List<string> _lstLogEvent = [];
 
-        private ActivityReq _tpRequest = new ActivityReq();
+        private TaskInfo _task               = new TaskInfo();
+        private ParentInfo _parentTask       = new ParentInfo();
+        private AccountInfo _account         = new AccountInfo();
+        private LocationInfo _location       = new LocationInfo();
+        private EmployeeInfo _employee       = new EmployeeInfo();
+        private TaskCatalogInfo _taskCatalog = new TaskCatalogInfo();
+
+        private TpAuthResponse _tpAuth  = new TpAuthResponse();
+        private ActivityReq _tpRequest  = new ActivityReq();
         private Preload _preloadRequest = new Preload();
-        //private TpCustomerResponse _tpCustomer = new TpCustomerResponse();
-        private TpAuthResponse _tpAuth = new TpAuthResponse();
+
         private readonly Trackpoint.ITrackpointServices _tpServices;
         #endregion
 
@@ -51,21 +59,17 @@ namespace TP_ITSM.Services.Execon
         {
             // Generamos un identificador único para la idempotencia
             var idempotencyKey = Guid.NewGuid().ToString();
-
             HttpClient _client = new HttpClient();
+            
+            _client.BaseAddress = new Uri(_url!);
+            _client.Timeout = TimeSpan.FromSeconds(_timeOutValue); //.FromMinutes(10);
             // Agregamos el encabezado de idempotencia
             _client.DefaultRequestHeaders.Remove("Idempotency-Key");
             _client.DefaultRequestHeaders.Add("Idempotency-Key", idempotencyKey);
-            _client.DefaultRequestHeaders.Accept.Clear();
-            _client.BaseAddress = new Uri(_url!);
-            _client.Timeout = TimeSpan.FromSeconds(_timeOutValue); //.FromMinutes(10);
+            _client.DefaultRequestHeaders.Accept.Add( new MediaTypeWithQualityHeaderValue("application/json") );
             _client.DefaultRequestHeaders.AcceptCharset.ParseAdd("utf-8");
-            _client.DefaultRequestHeaders.Accept.Add(
-                new MediaTypeWithQualityHeaderValue("application/json")
-            );
-
-
             _client.DefaultRequestHeaders.Clear();
+
             return _client;
         }
 
@@ -78,9 +82,9 @@ namespace TP_ITSM.Services.Execon
                 string select = "RecId, AssignmentID, Priority, PlannedStartDate, Details, ParentLink_RecID, ParentLink_Category, EX_CodigoCierre, Subject, EX_FirebaseID";
 
                 bool response = await GetFilter(objeto, filter, select);
-
                 if (response)
                 {
+                    _task = await DeserializeODataResponse<TaskInfo>(_responseText);
                     return (response, _responseText);
                 }
                 else
@@ -114,6 +118,7 @@ namespace TP_ITSM.Services.Execon
 
                 if (response)
                 {
+                    _parentTask = await DeserializeODataResponse<ParentInfo>(_responseText);
                     return (response, _responseText);
                 }
                 else
@@ -137,6 +142,7 @@ namespace TP_ITSM.Services.Execon
 
                 if (response)
                 {
+                    _account = await DeserializeODataResponse<AccountInfo>(_responseText);
                     return (response, _responseText);
                 }
                 else
@@ -160,6 +166,7 @@ namespace TP_ITSM.Services.Execon
 
                 if (response)
                 {
+                    _location = await DeserializeODataResponse<LocationInfo>(_responseText);
                     return (response, _responseText);
                 }
                 else
@@ -177,12 +184,13 @@ namespace TP_ITSM.Services.Execon
         {
             try
             {
-                string select = "RecId, DisplayName, Supervisor, Title, Department, Team, Status, Disabled, PrimaryEmail";
+                string select = "RecId, DisplayName, Supervisor, Title, Department, Team, Status, Disabled, PrimaryEmail, LoginId";
 
                 bool response = await GetFilter("Employee", $"LoginID eq '{owner}'", select);
 
                 if (response)
                 {
+                    _employee = await DeserializeODataResponse<EmployeeInfo>(_responseText);
                     return (response, _responseText);
                 }
                 else
@@ -206,6 +214,7 @@ namespace TP_ITSM.Services.Execon
 
                 if (response)
                 {
+                    _taskCatalog = await DeserializeODataResponse<TaskCatalogInfo>(_responseText);
                     return (response, _responseText);
                 }
                 else
@@ -229,73 +238,70 @@ namespace TP_ITSM.Services.Execon
                 var (successTask, respTaskInfo) = await GetTask(assignmentId);
                 if (!successTask)
                     return (false, respTaskInfo);
-                var task = await DeserializeODataResponse<TaskInfo>(respTaskInfo);
-                SetValuesModels(_tpRequest, task);
-                SetValuesModels(_preloadRequest, task);
+                //_task = await DeserializeODataResponse<TaskInfo>(respTaskInfo);
+                SetValuesModels(_tpRequest, _task);
+                SetValuesModels(_preloadRequest, _task);
                 #endregion
 
                 #region Busca Información del ParentTask
-                var (successParent, respParent) = await GetParentInfo( task?.ParentLink_RecID, task.ParentLink_Category);
+                var (successParent, respParent) = await GetParentInfo( _task?.ParentLink_RecID, _task.ParentLink_Category);
                 if (!successParent)
                     return (false, respParent);
-                var parentTask = await DeserializeODataResponse<ParentInfo>(respParent);
-                SetValuesModels(_tpRequest, parentTask);
-                SetValuesModels(_preloadRequest, parentTask);
+                //_parentTask = await DeserializeODataResponse<ParentInfo>(respParent);
+                SetValuesModels(_tpRequest, _parentTask);
+                SetValuesModels(_preloadRequest, _parentTask);
                 #endregion
 
                 #region Busca Información de la Cuenta del Cliente
-                var (successAccount, respAccount) = await GetAccount(parentTask?.EX_CustID_Link_RecID);
+                var (successAccount, respAccount) = await GetAccount(_parentTask?.EX_CustID_Link_RecID);
                 if (!successAccount)
                     return (false, respAccount);
-                
-                var account = await DeserializeODataResponse<AccountInfo>(respAccount);
+
+                //_account = await DeserializeODataResponse<AccountInfo>(respAccount);
                 
                 #region Valida existencia de customer en Trackpoint
-                var (successGetCustUuid, tpCustUuid) = await GetSetTpCustomerInfo(account);
+                var (successGetCustUuid, tpCustUuid) = await GetSetTpCustomerInfo(_account);
                 #endregion
                 if (!successGetCustUuid) 
                     return (false, tpCustUuid);
 
                 _tpRequest.scheduled_client_uuid = tpCustUuid;
-                SetValuesModels(_tpRequest, account);
-                SetValuesModels(_preloadRequest, account);
+                SetValuesModels(_tpRequest, _account);
+                SetValuesModels(_preloadRequest, _account);
                 #endregion
 
                 #region Busca Información del Location
-                var (successLocation, respLocation) = await GetLocation(parentTask?.EX_LocationID_Link_RecID);
+                var (successLocation, respLocation) = await GetLocation(_parentTask?.EX_LocationID_Link_RecID);
                 if (!successLocation)
                     return (false, respLocation);
-                var location = await DeserializeODataResponse<LocationInfo>(respLocation);
-                SetValuesModels(_tpRequest, location);
-                SetValuesModels(_preloadRequest, location);
+                //_location = await DeserializeODataResponse<LocationInfo>(respLocation);
+                SetValuesModels(_tpRequest, _location);
+                SetValuesModels(_preloadRequest, _location);
                 #endregion
 
                 #region Busca Información del Employee
-                var (successEmployee, respEmployee) = await GetEmployee(parentTask?.Owner);
+                var (successEmployee, respEmployee) = await GetEmployee(_parentTask?.Owner);
                 if (!successEmployee)
                     return (false, respEmployee);
-                var employee = await DeserializeODataResponse<EmployeeInfo>(respEmployee);
-                SetValuesModels(_tpRequest, employee);
-                SetValuesModels(_preloadRequest, employee);
+                // _employee = await DeserializeODataResponse<EmployeeInfo>(respEmployee);
+                SetValuesModels(_tpRequest, _employee);
+                SetValuesModels(_preloadRequest, _employee);
                 #endregion
 
                 #region Busca Información del Catalogo de Tareas
-                var (successTaskCat, respTaskCat) = await GetTaskCatalog(task?.Subject);
+                var (successTaskCat, respTaskCat) = await GetTaskCatalog(_task?.Subject);
                 if (!successTaskCat)
                     return (false, respTaskCat);
-                var taskCatalog = await DeserializeODataResponse<TaskCatalogInfo>(respTaskCat);
-                SetValuesModels(_tpRequest, taskCatalog);
-                SetValuesModels(_preloadRequest, taskCatalog);
+                // _taskCatalog  = await DeserializeODataResponse<TaskCatalogInfo>(respTaskCat);
+                SetValuesModels(_tpRequest, _taskCatalog);
+                SetValuesModels(_preloadRequest, _taskCatalog);
                 #endregion
 
                 #region Asignaciones puntuales
-                _tpRequest.scheduled_name_event = String.Concat( task.AssignmentID, " | ", parentTask.ParentNumber, " | P", task.Priority, " | ", location.EX_IdSitio, " | ", location.Name);
+                _tpRequest.scheduled_name_event = String.Concat( _task.AssignmentID, " | ", _parentTask.ParentNumber, " | P", _task.Priority, " | ", _location.EX_IdSitio, " | ", _location.Name);
                 _tpRequest.scheduled_expiration_date = _expirationDate!;
                 _tpRequest.id_user = _tpAuth.uuid;
                 #endregion
-
-                //Console.WriteLine(JsonConvert.SerializeObject(_tpRequest, Formatting.Indented));
-                //Console.WriteLine(JsonConvert.SerializeObject(_preloadRequest, Formatting.Indented));
 
                 return (true, JsonConvert.SerializeObject(_tpRequest));
             }
@@ -335,7 +341,6 @@ namespace TP_ITSM.Services.Execon
                 var (successUpd, responseUpd) = await UpPatchITSM("Task", _preloadRequest.frmRecIdTask!, upData);
                 if (!successUpd)
                     Console.WriteLine($"No se pudo actualizar el Task con el FirebaseID: {_preloadRequest.frmRecIdTask}");
-                //return (false, _responseText);
                 #endregion
 
                 #region Asigna el FirebaseID al modelo de Preload a la Actividad creada
@@ -352,15 +357,22 @@ namespace TP_ITSM.Services.Execon
             }
         }
 
-        public async Task<(bool, string)> UpTask(ResponseTaskTP requestBody)
+        public async Task<(bool, string)> UpTask(ResponseTaskTP body)
         {
             try
             {
-                var upByStatus = JsonResponse.TaskITSM(requestBody);
+                body = await InfoConvert(body);
 
-                var (successUpd, _responseText) = await UpPatchITSM("Task", requestBody.data.preload[0].frmRecIdTask, upByStatus);
+
+                var (upByStatus, action, isNote, note )= JsonResponse.TaskITSM(body, _url);
+
+                var (successUpd, _responseText) = await UpPatchITSM("Task", body.data.preload[0].frmRecIdTask, upByStatus);
                 if (!successUpd)
                     return (successUpd, _responseText);
+
+                var (successNote, responseNote) = isNote 
+                    ?  await SendPostITSM("/api/Obj/AddNote", note) 
+                    : (false, null);
 
                 return (true, _responseText);
             }
@@ -370,12 +382,72 @@ namespace TP_ITSM.Services.Execon
             }
         }
 
-        private JsonElement ConvertModelToJsonElement<T>(T model) => JsonDocument.Parse(JsonConvert.SerializeObject(model)).RootElement.Clone();
-        //{
-        //    using JsonDocument document = JsonDocument.Parse(JsonConvert.SerializeObject(model).ToString());
-        //    return document.RootElement.Clone();
-        //}
 
+        private async Task<ResponseTaskTP> InfoConvert(ResponseTaskTP body)
+        {
+            Models.Execon.Data data = body.data;
+            Models.Execon.Preload? preload = data.preload[0];
+            //TaskInfo? task = new TaskInfo();
+            EmployeeInfo? employeeDel = new EmployeeInfo();
+            EmployeeInfo? employeeUsr = new EmployeeInfo();
+            string deletedBy    = data.deletedBy is "No disponible" ? "" : new MailAddress(data.deletedBy).User; 
+            string user         = data.scheduled_user_email is null ? "" : new MailAddress(data.scheduled_user_email).User;
+
+            if( preload is not null )
+            {
+                //var (successTask, responseTask) = await GetTask(preload.frmAssignmentId);
+                var (successTask, responseTask) = await GetTaskReq(preload.frmAssignmentId);                 
+            }
+
+            if (deletedBy != "")
+            {
+                var (successEmpl, responseEmpl) = await GetEmployee(deletedBy);
+                employeeDel = successEmpl ? await DeserializeODataResponse<EmployeeInfo>(responseEmpl) : null;
+
+                body.data.deletedBy = (employeeDel is not null) ? employeeDel.DisplayName : "";
+            }
+
+            if (user != "")
+            {
+                var (successUsr, responseUsr) = await GetEmployee(user);
+                employeeUsr = successUsr ? await DeserializeODataResponse<EmployeeInfo>(responseUsr) : null;
+
+                body.data.scheduled_user_email = (employeeUsr is not null) ? employeeUsr.LoginId : "";
+            }
+
+            if (data.status == "3")
+            {
+                var llegadaSitioElement = data.elements.FirstOrDefault(e => e.title == "Llegada a sitio");
+                LocationUp? locationUp = new LocationUp();
+
+                #region Valida actualizacion de Location
+                if (_tpRequest.scheduled_clasification_name == "SIN ZONA")
+                {
+                    locationUp.EX_Zona           = (data.classification_category_name != "SIN ZONA") ? data.classification_category_name    : _tpRequest.scheduled_clasification_name;
+                    locationUp.EX_PlazaCobertura = (data.classification_category_name != "SIN ZONA") ? data.classification_subcategory_name : _tpRequest.scheduled_subclasification_name;
+                }
+                #endregion
+
+                #region Asigna variables Elemento Llegada a Sitio
+                if (llegadaSitioElement is not null)
+                {
+                    var infoMap = llegadaSitioElement.info;
+
+                    var addressSite = infoMap.address ??= "";
+                    locationUp.EX_Geohash  = infoMap.geolocation.geohash ??= "";
+                    locationUp.EX_Latitud  = infoMap.geolocation.geopoint._latitude;
+                    locationUp.EX_Longitud = infoMap.geolocation.geopoint._longitude;
+
+                    var (successUpd, _responseText) = await UpPatchITSM("Location", _location.RecId, locationUp);
+                }
+                #endregion
+            }
+
+            return body;
+        }
+
+        private JsonElement ConvertModelToJsonElement<T>(T model) => JsonDocument.Parse(JsonConvert.SerializeObject(model)).RootElement.Clone();
+        
         private async Task<(bool, string)> GetSetTpCustomerInfo(AccountInfo customer)
         {
             #region Valida en Trackpoint que exista del cliente
@@ -484,12 +556,6 @@ namespace TP_ITSM.Services.Execon
                 queryParams["select"] = select;
 
                 HttpClient client = CreateHttpClient();
-                // Generamos un identificador único para la idempotencia
-                var idempotencyKey = Guid.NewGuid().ToString();
-                // Agregamos el encabezado de idempotencia
-                client.DefaultRequestHeaders.Remove("Idempotency-Key");
-                client.DefaultRequestHeaders.Add("Idempotency-Key", idempotencyKey);
-
 
                 HttpResponseMessage response = await client.GetAsync($"{_ambiente}/api/Obj/Filter?{queryParams}");
                 _responseText = await response.Content.ReadAsStringAsync();
@@ -518,12 +584,6 @@ namespace TP_ITSM.Services.Execon
 
                 HttpClient client = CreateHttpClient();
                 
-                // Generamos un identificador único para la idempotencia
-                var idempotencyKey = Guid.NewGuid().ToString();
-                // Agregamos el encabezado de idempotencia
-                client.DefaultRequestHeaders.Remove("Idempotency-Key");
-                client.DefaultRequestHeaders.Add("Idempotency-Key", idempotencyKey);
-
                 HttpResponseMessage response = await client.PatchAsync($"{_ambiente}/api/Obj/Update?{queryParams}", content);
                 _responseText = await response.Content.ReadAsStringAsync();
 
@@ -536,7 +596,7 @@ namespace TP_ITSM.Services.Execon
             }
         }
 
-        private async Task<T> DeserializeODataResponse<T>(string jsonResponse)
+        public async Task<T> DeserializeODataResponse<T>(string jsonResponse)
         {
             var odataResponse = JsonConvert.DeserializeObject<ODataResponse<T>>(jsonResponse);
 
@@ -546,20 +606,21 @@ namespace TP_ITSM.Services.Execon
             return odataResponse.Value[0];
         }
 
-        public async Task SendPostITSM(string metodo, StringContent httpContent)
+        public async Task<(bool, string)> SendPostITSM<T>(string metodo, T httpContent)
         {
             try
             {
                 HttpClient client = CreateHttpClient();
-                HttpResponseMessage response = await client.PostAsync(metodo, httpContent);
+
+                HttpResponseMessage response = await client.PostAsJsonAsync($"{_ambiente}{metodo}", httpContent);
                 _responseText = await response.Content.ReadAsStringAsync();
 
-                //return response.IsSuccessStatusCode;
+                return (response.IsSuccessStatusCode, _responseText);
             }
             catch (Exception ex)
             {
                 _responseText = ex.Message;
-                //return false;
+                return (false, _responseText);
             }
         }
     }

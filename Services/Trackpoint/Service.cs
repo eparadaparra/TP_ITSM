@@ -49,7 +49,7 @@ namespace TP_ITSM.Services.Trackpoint
             _client.Timeout = TimeSpan.FromSeconds(_timeOutValue); //.FromMinutes(10);
             _client.DefaultRequestHeaders.Add("api-customer-key", _custumerKey);
             _client.DefaultRequestHeaders.AcceptCharset.ParseAdd("utf-8");
-            _client.DefaultRequestHeaders.Accept.Add( 
+            _client.DefaultRequestHeaders.Accept.Add(
                 new MediaTypeWithQualityHeaderValue("application/json")
             );
             _client.DefaultRequestHeaders.Authorization = token

@@ -4,8 +4,8 @@ namespace TP_ITSM.Models.Execon
 {
     public class LocationInfo
     {
-        //[JsonPropertyName("RecId")]
-        //public string RecId { get; set; }
+        [JsonPropertyName("RecId")]
+        public string RecId { get; set; }
 
         [JsonPropertyName("Name")]
         public string Name { get; set; }
@@ -52,5 +52,24 @@ namespace TP_ITSM.Models.Execon
             }
             set { } // Setter necesario para deserialización, pero puede ser vacío
         }
+    }
+
+    public class LocationUp
+    {
+        [JsonPropertyName("EX_Zona")]
+        public string EX_Zona { get; set; } = "";
+
+        [JsonPropertyName("EX_PlazaCobertura")]
+        public string EX_PlazaCobertura { get; set; } = "";
+
+        [JsonPropertyName("EX_Geohash")]
+        public string EX_Geohash { get; set; } = "";
+
+        [JsonPropertyName("EX_Latitud")]
+        public double EX_Latitud { get; set; } = 0;
+
+        [JsonPropertyName("EX_Longitud")]
+        public double EX_Longitud { get; set; } = 0;
+
     }
 }

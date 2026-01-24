@@ -35,5 +35,11 @@ namespace TP_ITSM.Models
 
         [JsonPropertyName("note")]
         public string note { get; set; }
+
+        [JsonPropertyName("category")]
+        public string category { get; set; } = "Memo";
+
+        [JsonPropertyName("source")]
+        public string source { get; set; } = "Other";
     }
 }

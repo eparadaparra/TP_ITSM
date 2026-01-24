@@ -163,12 +163,14 @@ namespace TP_ITSM.Models.Execon
         public string frmRecIdTask { get; set; } = "No disponible";
 
         [JsonPropertyName("frmAssignmentId")]
+        [JsonConverter(typeof(StringToIntConverter))]
         public int frmAssignmentId { get; set; }
 
         [JsonPropertyName("frmParentNumber")]
+        [JsonConverter(typeof(StringToIntConverter))]
         public int frmParentNumber { get; set; }
 
-        [JsonPropertyName("frmParentCategory")]
+        [JsonPropertyName("frmParentCategory")] 
         public string frmParentCategory { get; set; } = "No disponible";
 
         [JsonPropertyName("frmIdSitio")]

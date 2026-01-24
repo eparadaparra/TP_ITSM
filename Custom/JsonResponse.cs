@@ -1,21 +1,51 @@
 ﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System;
+using System.Globalization;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Net.Mail;
 using System.Text;
 using TP_ITSM.Models;
 using TP_ITSM.Models.Execon;
+using TP_ITSM.Models.Trackpoint;
 
 namespace TP_ITSM.Custom
 {
     public class JsonResponse
     {
-        public static JObject TaskITSM(ResponseTaskTP body)
+        public enum TaskStatus
         {
+            None,
+            Logged,
+            Assigned,
+            Accepted,
+            Waiting,
+            Completed,
+            Cancelled,
+        }
+
+        public static NotaITSM NoteTask(string parentNumber, string subject, string nota, string categoria = "")
+        {
+            return new NotaITSM
+            {
+                Object = "Task", 
+                objectNumber = parentNumber, 
+                subject = subject, 
+                note = nota,
+                category = categoria
+            };
+        }
+
+        public static (JObject, TaskStatus, bool, NotaITSM) TaskITSM(ResponseTaskTP body, string _url)
+        {
+            TaskStatus action = TaskStatus.None;
             var data = body.data;
             NotaITSM nota = new NotaITSM();
+            bool isNote = false;
 
             var statusITSM = Utilities.GetStatusMap(data.status, data.statusInfo is null ? "Programada" : data.statusInfo.txt);
-            var user = data.scheduled_user_email is null ? "" : new MailAddress(data.scheduled_user_email).User;
+            var user = data.scheduled_user_email;
             var zona = data.classification_category_name;
             var plazaCobertura = data.classification_subcategory_name;
 
@@ -29,6 +59,8 @@ namespace TP_ITSM.Custom
                 jsonUp.Add("Details"         , data.scheduled_instructions);
                 jsonUp.Add("PlannedStartDate", data.scheduled_programming_dateTimeOffset);
                 jsonUp.Add("AssignedDateTime", DateTimeOffset.UtcNow);
+
+                action = TaskStatus.Assigned;
             }
 
             if ((data.status is "2" or "3") && (data.statusInfo?.txt is "Abierta" or "En Revisión"))
@@ -39,6 +71,8 @@ namespace TP_ITSM.Custom
                 jsonUp.Add("Details"         , data.scheduled_instructions);
                 jsonUp.Add("PlannedStartDate", data.scheduled_programming_dateTimeOffset);
                 jsonUp.Add("AcknowledgedBy"  , user);
+
+                action = TaskStatus.Accepted;
 
                 //TODO: Insertar Attachments con Link de detalle de TP
             }
@@ -128,57 +162,62 @@ namespace TP_ITSM.Custom
                 }
                 #endregion
 
+                #region Asigna Comentarios Finales Modelo de NotasITSM
+                isNote = true;
+                nota = NoteTask(
+                    data.preload[0].frmAssignmentId.ToString(),
+                    "Comentarios Finales",
+                    comentariosCierre,
+                    "Resolution Communication"
+                    );
+                #endregion
+
                 jsonUp.Add("EX_FirebaseID"      , data.firebase_id);
                 jsonUp.Add("Status"             , statusITSM);
                 jsonUp.Add("EX_SubStatusTask"   , subStatusTask);
-                jsonUp.Add("ResolvedBy"         , "InternalServices");
+                //jsonUp.Add("ResolvedBy"         , "InternalServices");
                 jsonUp.Add("PlannedStartDate"   , programmingDateTask);
                 jsonUp.Add("StartDate"          , startDateTask);
+                jsonUp.Add("EndDate"            , endDateTask);
                 jsonUp.Add("ActualStartDate"    , checkInSite);
                 jsonUp.Add("ActualEndDate"      , endDateTask);
-                jsonUp.Add("ActualEffort"       , durationMint);       //Tarea en minutos, desde que se Inicia la Actividad en TP hasta que finaliza
-                jsonUp.Add("CompletedDateTime"  , endDateTask);
+                jsonUp.Add("ActualEffort"       , durationMint);  //Tarea en minutos, desde que se Inicia la Actividad en TP hasta que finaliza
+                //jsonUp.Add("CompletedDateTime"  , endDateTask);
                 jsonUp.Add("ResolvedDateTime"   , endDateTask);
                 jsonUp.Add("PlannedEndDate"     , endDateTask);
 
+                action = TaskStatus.Completed;
+
                 //TODO: Insertar Attachments con Link de PDF de TP
-                //TODO: Insertar Comentarios de Cierre en JOURNAL
             }
 
             if ((data.status is "0" or "4" or "5" or "6") && (data.statusInfo?.txt is "Cancelada" or "Archivada" or "Vencida" or "Eliminada"))
             {
-                #region Declara variables y obtiene elementos necesarios para cierre de actividad
-
+                #region Declara variables y obtiene elementos necesarios para cierre de actividad y Notas de Cancelación
                 DateTimeOffset programmingDateTask = data.scheduled_programming_dateTimeOffset;
-                var deleteBy = data.status == "6" ? new MailAddress(data.deletedBy).User : "";
+                var deleteBy = data.status == "6" ? data.deletedBy : "";
+                
                 var subject = String.Concat(data.statusInfo?.txt, " - Comentarios de Cancelacion");
-                var note    = data.status switch
+                var bodyNote    = data.status switch
                 {
                     "4" => "Tarea archivada en Trackpoint",
                     "5" => "Tarea cancelada por fecha de vencimiento en Trackpoint",
                     "6" => $"Tarea eliminada en Trackpoint por {deleteBy}",
                     _ => "No especificado"
                 };
-
-                nota.Object       = "Task";
-                nota.objectNumber = data.preload[0].frmAssignmentId.ToString();
-                nota.subject      = subject;
-                nota.note         = note;
-
-                string uri = "/Ivanti/api/Obj/AddNote";
-                StringContent httpContent = new StringContent(JsonConvert.SerializeObject(nota), Encoding.UTF8, "application/json");
-
+                isNote = true;
+                nota = NoteTask(data.preload[0].frmAssignmentId.ToString(), subject, bodyNote, "Resolution Communication");
                 #endregion
-
+                     
                 jsonUp.Add("EX_FirebaseID"      , data.firebase_id);
                 jsonUp.Add("Status"             , statusITSM);
                 jsonUp.Add("ResolvedBy"         , "InternalServices");
                 jsonUp.Add("PlannedStartDate"   , programmingDateTask);
 
-                //TODO: Insertar Comentarios de Cierre en JOURNAL
+                action = TaskStatus.Cancelled;
             }
 
-            return jsonUp;
+            return (jsonUp, action, isNote, nota);
         }
 
     }

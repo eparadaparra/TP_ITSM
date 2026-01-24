@@ -6,6 +6,9 @@ namespace TP_ITSM.Models.Execon
 {
     public class TaskInfo
     {
+        [JsonPropertyName("RecId")]
+        public string RecId { get; set; }
+
         [JsonPropertyName("EX_CodigoCierre")]
         public string? EX_CodigoCierre { get; set; }
 
@@ -20,9 +23,6 @@ namespace TP_ITSM.Models.Execon
 
         [JsonPropertyName("ParentLink_RecID")]
         public string? ParentLink_RecID { get; set; }
-
-        [JsonPropertyName("RecId")]
-        public string? RecId { get; set; }
 
         [JsonPropertyName("Subject")]
         public string? Subject { get; set; }
@@ -56,8 +56,8 @@ namespace TP_ITSM.Models.Execon
     }
     public class TaskCatalogInfo
     {
-        //[JsonPropertyName("RecId")]
-        //public string RecId { get; set; }
+        [JsonPropertyName("RecId")]
+        public string RecId { get; set; }
 
         [JsonPropertyName("EX_IdActividadTP")]
         public string EX_IdActividadTP { get; set; }
