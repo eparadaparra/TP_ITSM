@@ -4,6 +4,7 @@ using System.Collections.Specialized;
 using System.Net.Http.Headers;
 using System.Net.Mail;
 using System.Reflection;
+using System.Security.AccessControl;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -35,6 +36,8 @@ namespace TP_ITSM.Services.Execon
         private LocationInfo _location       = new LocationInfo();
         private EmployeeInfo _employee       = new EmployeeInfo();
         private TaskCatalogInfo _taskCatalog = new TaskCatalogInfo();
+        private AttachementITSM _attachModel = new AttachementITSM();
+        private AttachInfo _attachInfo       = new AttachInfo();
 
         private TpAuthResponse _tpAuth  = new TpAuthResponse();
         private ActivityReq _tpRequest  = new ActivityReq();
@@ -238,26 +241,20 @@ namespace TP_ITSM.Services.Execon
                 var (successTask, respTaskInfo) = await GetTask(assignmentId);
                 if (!successTask)
                     return (false, respTaskInfo);
-                //_task = await DeserializeODataResponse<TaskInfo>(respTaskInfo);
                 SetValuesModels(_tpRequest, _task);
-                SetValuesModels(_preloadRequest, _task);
                 #endregion
 
                 #region Busca Información del ParentTask
                 var (successParent, respParent) = await GetParentInfo( _task?.ParentLink_RecID, _task.ParentLink_Category);
                 if (!successParent)
                     return (false, respParent);
-                //_parentTask = await DeserializeODataResponse<ParentInfo>(respParent);
                 SetValuesModels(_tpRequest, _parentTask);
-                SetValuesModels(_preloadRequest, _parentTask);
                 #endregion
 
                 #region Busca Información de la Cuenta del Cliente
                 var (successAccount, respAccount) = await GetAccount(_parentTask?.EX_CustID_Link_RecID);
                 if (!successAccount)
                     return (false, respAccount);
-
-                //_account = await DeserializeODataResponse<AccountInfo>(respAccount);
                 
                 #region Valida existencia de customer en Trackpoint
                 var (successGetCustUuid, tpCustUuid) = await GetSetTpCustomerInfo(_account);
@@ -267,37 +264,31 @@ namespace TP_ITSM.Services.Execon
 
                 _tpRequest.scheduled_client_uuid = tpCustUuid;
                 SetValuesModels(_tpRequest, _account);
-                SetValuesModels(_preloadRequest, _account);
                 #endregion
 
                 #region Busca Información del Location
                 var (successLocation, respLocation) = await GetLocation(_parentTask?.EX_LocationID_Link_RecID);
                 if (!successLocation)
                     return (false, respLocation);
-                //_location = await DeserializeODataResponse<LocationInfo>(respLocation);
                 SetValuesModels(_tpRequest, _location);
-                SetValuesModels(_preloadRequest, _location);
                 #endregion
 
                 #region Busca Información del Employee
                 var (successEmployee, respEmployee) = await GetEmployee(_parentTask?.Owner);
                 if (!successEmployee)
                     return (false, respEmployee);
-                // _employee = await DeserializeODataResponse<EmployeeInfo>(respEmployee);
                 SetValuesModels(_tpRequest, _employee);
-                SetValuesModels(_preloadRequest, _employee);
                 #endregion
 
                 #region Busca Información del Catalogo de Tareas
                 var (successTaskCat, respTaskCat) = await GetTaskCatalog(_task?.Subject);
                 if (!successTaskCat)
                     return (false, respTaskCat);
-                // _taskCatalog  = await DeserializeODataResponse<TaskCatalogInfo>(respTaskCat);
                 SetValuesModels(_tpRequest, _taskCatalog);
-                SetValuesModels(_preloadRequest, _taskCatalog);
                 #endregion
 
                 #region Asignaciones puntuales
+                SetPreloadValues(_task, _parentTask, _location, _account, _employee);
                 _tpRequest.scheduled_name_event = String.Concat( _task.AssignmentID, " | ", _parentTask.ParentNumber, " | P", _task.Priority, " | ", _location.EX_IdSitio, " | ", _location.Name);
                 _tpRequest.scheduled_expiration_date = _expirationDate!;
                 _tpRequest.id_user = _tpAuth.uuid;
@@ -387,7 +378,7 @@ namespace TP_ITSM.Services.Execon
         {
             Models.Execon.Data data = body.data;
             Models.Execon.Preload? preload = data.preload[0];
-            //TaskInfo? task = new TaskInfo();
+            
             EmployeeInfo? employeeDel = new EmployeeInfo();
             EmployeeInfo? employeeUsr = new EmployeeInfo();
             string deletedBy    = data.deletedBy is "No disponible" ? "" : new MailAddress(data.deletedBy).User; 
@@ -415,8 +406,17 @@ namespace TP_ITSM.Services.Execon
                 body.data.scheduled_user_email = (employeeUsr is not null) ? employeeUsr.LoginId : "";
             }
 
-            if (data.status == "3")
+            if (data.status == "2" && data.statusInfo.txt == "Abierta")
             {
+                var url = String.Concat("https://trackpoint.webpoint.mx/reportnew/?customerId=execon&orderId=", data.firebase_id);
+                await AddAttachementModel(preload!.frmRecIdTask, url, url);
+            }
+
+                if (data.status == "3")
+            {
+                var url = String.Concat("https://trackpoint-d2fa6.uc.r.appspot.com/getPdfNew?q=execon&order_id=", data.firebase_id);
+                await AddAttachementModel(preload!.frmRecIdTask, url, url);
+
                 var llegadaSitioElement = data.elements.FirstOrDefault(e => e.title == "Llegada a sitio");
                 LocationUp? locationUp = new LocationUp();
 
@@ -442,49 +442,32 @@ namespace TP_ITSM.Services.Execon
                 }
                 #endregion
             }
-
             return body;
         }
 
         private JsonElement ConvertModelToJsonElement<T>(T model) => JsonDocument.Parse(JsonConvert.SerializeObject(model)).RootElement.Clone();
-        
-        private async Task<(bool, string)> GetSetTpCustomerInfo(AccountInfo customer)
+
+        private async Task AddAttachementModel(string parentRecId, string attachName, string url)
         {
-            #region Valida en Trackpoint que exista del cliente
-            string etiqueta = customer.CustID.Count() == 4 ? "client_id" : "id";
-            object newObj = new Dictionary<string, string> { [etiqueta] = customer.CustID };
-            TpCustomerResponse apiResponse = new TpCustomerResponse();
-            DataCustomerTP dataCustomerTP = new DataCustomerTP();
+            _attachInfo.ParentLink = parentRecId;
+            _attachInfo.ATTACHNAME = attachName;
+            _attachInfo.URL = url;
+            _attachModel.Attachment = _attachInfo;
+            List<AttachementITSM> lstAtt = [_attachModel];
 
-            var (successTpAccount, respTPAccount) = await _tpServices.GetCustomer(newObj);
-            apiResponse = System.Text.Json.JsonSerializer.Deserialize<TpCustomerResponse>(respTPAccount);
-            dataCustomerTP = apiResponse.data;
+            await SendPostITSM("/api/Obj/Create", lstAtt);
+        }
 
-            if (successTpAccount && dataCustomerTP.modules_notify != null)
-            {
-                return (successTpAccount, dataCustomerTP.modules_notify.filters_uid!);
-            }
-            #endregion
-
-            #region Si no existe se crea Customer en Trackpoint y regresa su Id
-            TpCustomerResponse insTpCust = new TpCustomerResponse();
-            insTpCust.data = new DataCustomerTP();
-            insTpCust.data.modules_notify = new ModulesNotify();
-            insTpCust.data.modules_notify.notificacion = new Notificacion();
-            insTpCust.data.name = customer.Name.Trim();
-            insTpCust.data.user_uuid_id = _tpAuth.uuid.Trim();
-            insTpCust.data.client_id = customer.CustID.Trim();
-
-            (successTpAccount, respTPAccount) = await _tpServices.InsUpdDelCustomer(insTpCust, "INS");
-            insTpCust = System.Text.Json.JsonSerializer.Deserialize<TpCustomerResponse>(respTPAccount);
-            
-            if (successTpAccount && insTpCust.id != null)
-            {
-                return (successTpAccount, insTpCust.id);
-            }
-            
-            return (successTpAccount, respTPAccount);            
-            #endregion
+        private void SetPreloadValues(TaskInfo task, ParentInfo parent, LocationInfo location, AccountInfo account, EmployeeInfo employee)
+        {
+            _preloadRequest.frmRecIdTask       = task.RecId;
+            _preloadRequest.frmAssignmentId    = task.AssignmentID;
+            _preloadRequest.frmParentNumber    = parent.ParentNumber;
+            _preloadRequest.frmParentCategory  = task.ParentLink_Category;
+            _preloadRequest.frmIdSitio         = location.EX_IdSitio;
+            _preloadRequest.frmCustId          = account.CustID;
+            _preloadRequest.frmCodigoCierre    = task.EX_CodigoCierre;
+            _preloadRequest.frmParentOwner     = employee.DisplayName;
         }
 
         private void SetValuesModels(object modelo, object body)
@@ -546,6 +529,16 @@ namespace TP_ITSM.Services.Execon
             }
         }
 
+        public async Task<T> DeserializeODataResponse<T>(string jsonResponse)
+        {
+            var odataResponse = JsonConvert.DeserializeObject<ODataResponse<T>>(jsonResponse);
+
+            if (odataResponse?.Value == null || !odataResponse.Value.Any())
+                throw new InvalidOperationException("No data found in OData response");
+
+            return odataResponse.Value[0];
+        }
+
         private async Task<bool> GetFilter(string objeto, string filter, string select)
         {
             try
@@ -569,43 +562,6 @@ namespace TP_ITSM.Services.Execon
             }
         }
 
-        private async Task<(bool, string)> UpPatchITSM<T>(string objeto, string recId, T update)
-        {
-            try
-            {
-                Console.WriteLine("Tipo: " + objeto);
-                Console.WriteLine("RecId: " + recId);
-                Console.WriteLine("Tipo de var update: " + update.GetType().ToString());
-                Console.WriteLine(update);
-                var content = new StringContent(JsonConvert.SerializeObject(update), Encoding.UTF8, "application/json");
-                NameValueCollection queryParams = HttpUtility.ParseQueryString(string.Empty);
-                queryParams["objeto"] = objeto;
-                queryParams["recId"]  = recId;
-
-                HttpClient client = CreateHttpClient();
-                
-                HttpResponseMessage response = await client.PatchAsync($"{_ambiente}/api/Obj/Update?{queryParams}", content);
-                _responseText = await response.Content.ReadAsStringAsync();
-
-                return (response.IsSuccessStatusCode, _responseText);
-            }
-            catch (Exception ex)
-            {
-                _responseText = ex.Message;
-                return (false, _responseText);
-            }
-        }
-
-        public async Task<T> DeserializeODataResponse<T>(string jsonResponse)
-        {
-            var odataResponse = JsonConvert.DeserializeObject<ODataResponse<T>>(jsonResponse);
-
-            if (odataResponse?.Value == null || !odataResponse.Value.Any())
-                throw new InvalidOperationException("No data found in OData response");
-
-            return odataResponse.Value[0];
-        }
-
         public async Task<(bool, string)> SendPostITSM<T>(string metodo, T httpContent)
         {
             try
@@ -622,6 +578,68 @@ namespace TP_ITSM.Services.Execon
                 _responseText = ex.Message;
                 return (false, _responseText);
             }
+        }
+
+        private async Task<(bool, string)> UpPatchITSM<T>(string objeto, string recId, T update)
+        {
+            try
+            {
+                var content = new StringContent(JsonConvert.SerializeObject(update), Encoding.UTF8, "application/json");
+                NameValueCollection queryParams = HttpUtility.ParseQueryString(string.Empty);
+                queryParams["objeto"] = objeto;
+                queryParams["recId"] = recId;
+
+                HttpClient client = CreateHttpClient();
+
+                HttpResponseMessage response = await client.PatchAsync($"{_ambiente}/api/Obj/Update?{queryParams}", content);
+                _responseText = await response.Content.ReadAsStringAsync();
+
+                return (response.IsSuccessStatusCode, _responseText);
+            }
+            catch (Exception ex)
+            {
+                _responseText = ex.Message;
+                return (false, _responseText);
+            }
+        }
+        
+        private async Task<(bool, string)> GetSetTpCustomerInfo(AccountInfo customer)
+        {
+            #region Valida en Trackpoint que exista del cliente
+            string etiqueta = customer.CustID.Count() == 4 ? "client_id" : "id";
+            object newObj = new Dictionary<string, string> { [etiqueta] = customer.CustID };
+            TpCustomerResponse apiResponse = new TpCustomerResponse();
+            DataCustomerTP dataCustomerTP = new DataCustomerTP();
+
+            var (successTpAccount, respTPAccount) = await _tpServices.GetCustomer(newObj);
+            apiResponse = System.Text.Json.JsonSerializer.Deserialize<TpCustomerResponse>(respTPAccount);
+            dataCustomerTP = apiResponse.data;
+
+            if (successTpAccount && dataCustomerTP.modules_notify != null)
+            {
+                return (successTpAccount, dataCustomerTP.modules_notify.filters_uid!);
+            }
+            #endregion
+
+            #region Si no existe se crea Customer en Trackpoint y regresa su Id
+            TpCustomerResponse insTpCust = new TpCustomerResponse();
+            insTpCust.data = new DataCustomerTP();
+            insTpCust.data.modules_notify = new ModulesNotify();
+            insTpCust.data.modules_notify.notificacion = new Notificacion();
+            insTpCust.data.name = customer.Name.Trim();
+            insTpCust.data.user_uuid_id = _tpAuth.uuid.Trim();
+            insTpCust.data.client_id = customer.CustID.Trim();
+
+            (successTpAccount, respTPAccount) = await _tpServices.InsUpdDelCustomer(insTpCust, "INS");
+            insTpCust = System.Text.Json.JsonSerializer.Deserialize<TpCustomerResponse>(respTPAccount);
+            
+            if (successTpAccount && insTpCust.id != null)
+            {
+                return (successTpAccount, insTpCust.id);
+            }
+            
+            return (successTpAccount, respTPAccount);            
+            #endregion
         }
     }
 }

@@ -42,4 +42,28 @@ namespace TP_ITSM.Models
         [JsonPropertyName("source")]
         public string source { get; set; } = "Other";
     }
+
+    public class AttachementITSM
+    {
+        [JsonPropertyName("Attachment")]
+        public AttachInfo Attachment { get; set; }
+    }
+
+    public class AttachInfo
+    {
+        [JsonPropertyName("ParentLink")]
+        public string ParentLink { get; set; }
+
+        [JsonPropertyName("ATTACHNAME")]
+        public string ATTACHNAME { get; set; }
+
+        [JsonPropertyName("URL")]
+        public string URL { get; set; }
+
+        [JsonPropertyName("SaveType")]
+        public string SaveType { get; set; } = "Database";
+
+        [JsonPropertyName("Uploaded")]
+        public int Uploaded { get; set; } = 1;
+    }
 }
