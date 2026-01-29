@@ -1,4 +1,7 @@
-﻿using TP_ITSM.Models;
+﻿using Microsoft.EntityFrameworkCore;
+
+using TP_ITSM.Data;
+using TP_ITSM.Models;
 using TP_ITSM.Services.Execon;
 using TP_ITSM.Services.Trackpoint;
 
@@ -13,6 +16,16 @@ builder.Services.AddCors(option =>
     )
 );
 
+// Configurar el DbContext con la cadena de conexión desde appsettings.json
+builder.Services.AddDbContext<ConnIVANTIDW>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("connIVANTIDW"))
+);
+builder.Services.AddDbContext<ConnITSM>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("connITSM"))
+);
+
+//builder.Services.AddDbContext
+
 builder.Services.AddScoped<IExeconServices, TP_ITSM.Services.Execon.Services>();
 builder.Services.AddScoped<ITrackpointServices, TP_ITSM.Services.Trackpoint.Service>();
 
@@ -23,6 +36,7 @@ builder.Services.AddControllers()
         {
             o.JsonSerializerOptions.Converters.Add(new ItemValueJsonConverter());
             o.JsonSerializerOptions.Converters.Add(new StringToIntConverter());
+            o.JsonSerializerOptions.Converters.Add(new TimestampOrEmptyConverter());
         }
     );
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle

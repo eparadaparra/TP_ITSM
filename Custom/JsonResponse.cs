@@ -1,14 +1,9 @@
-﻿using Newtonsoft.Json;
+﻿using Microsoft.Data.SqlClient;
 using Newtonsoft.Json.Linq;
-using System;
-using System.Globalization;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Net.Mail;
-using System.Text;
+
+using TP_ITSM.Data;
 using TP_ITSM.Models;
 using TP_ITSM.Models.Execon;
-using TP_ITSM.Models.Trackpoint;
 
 namespace TP_ITSM.Custom
 {
@@ -37,7 +32,7 @@ namespace TP_ITSM.Custom
             };
         }
 
-        public static (JObject, TaskStatus, bool, NotaITSM) TaskITSM(ResponseTaskTP body, string _url)
+        public static (JObject, TaskStatus, bool, NotaITSM) TaskITSM(ResponseTaskTP body)
         {
             TaskStatus action = TaskStatus.None;
             var data = body.data;
@@ -83,11 +78,13 @@ namespace TP_ITSM.Custom
                 var llegadaSitioElement     = data.elements.FirstOrDefault(e => e.title == "Llegada a sitio");
                 var cierreActividadElement  = data.elements.FirstOrDefault(e => e.title == "Cierre de actividad");
                 var codigoCierreElement     = data.elements.FirstOrDefault(e => e.title == "Código de cierre");
+                var comentariosElement      = data.elements.FirstOrDefault(e => e.title == "Comentarios");
 
                 var subStatusTask           = String.Empty;
                 var comentariosCierre       = String.Empty;
                 var codigoCierre            = String.Empty;
                 var quienProporcionoCierre  = String.Empty;
+                var comentarioFinal         = String.Empty;
 
                 var geoHashSite             = String.Empty;
                 var addressSite             = String.Empty;
@@ -95,13 +92,18 @@ namespace TP_ITSM.Custom
                 double lonSite   = 0;
                 int durationMint = Utilities.DiferenciaMinutos(data.start_date_utc_dateTimeOffset, data.end_date_utc_dateTimeOffset);
 
-                bool isCC = false;
-
                 DateTimeOffset checkInSite         = DateTimeOffset.Now;
                 DateTimeOffset startDateTask       = data.start_date_utc_dateTimeOffset;
                 DateTimeOffset programmingDateTask = data.scheduled_programming_dateTimeOffset;
                 DateTimeOffset endDateTask         = data.end_date_utc_dateTimeOffset;
 
+                #endregion
+
+                #region Asigna variables Elemento Comentarios
+                if (comentariosElement is not null)
+                {
+                    comentarioFinal = comentariosElement.value;
+                }
                 #endregion
 
                 #region Asigna variables Elemento Codigo de Cierre
@@ -119,7 +121,6 @@ namespace TP_ITSM.Custom
                                 comentariosCierre = valor;
                                 break;
                             case "código de cierre":
-                                isCC = true;
                                 codigoCierre = valor;
                                 break;
                             case "nombre de quién proporcionó el código de cierre":
@@ -218,6 +219,103 @@ namespace TP_ITSM.Custom
             }
 
             return (jsonUp, action, isNote, nota);
+        }
+
+        public static async Task<List<SqlParameter>> TrasladoRetorno(ResponseTaskTP body)
+        {
+            var data = body.data;
+
+            var destinoElement      = data.elements.FirstOrDefault(e => e.title == "Destino");
+            var comentariosElement  = data.elements.FirstOrDefault(e => e.title == "Comentarios");
+
+            //var jsonUp = new JObject();
+            var parameters = new List<SqlParameter>();
+
+            var status = data.statusInfo.txt;
+            var firebaseId = data.firebase_id;
+            var user = data.scheduled_user_email;
+
+            var zona = data.classification_category_name;
+            var plazaCobertura  = data.classification_subcategory_name;
+            
+            DateTimeOffset InicioFechaTrasladoUTC = data.start_date_utc_dateTimeOffset;
+            var inicioDireccion                   = data.address_checkIn;
+            double inicioLatitud                  = data.geolocation.geopoint._latitude;
+            double inicioLongitud                 = data.geolocation.geopoint._longitude;
+            var inicioGeohash                     = data.geolocation.geohash;
+            var comentarioFinal                   = String.Empty;
+
+            //jsonUp.Add("Status"     , status);
+            //jsonUp.Add("FirebaseId" , firebaseId);
+            //jsonUp.Add("Usuario"    , user);
+
+            parameters.Add(new SqlParameter("@Status"    , status     ?? (object)DBNull.Value));
+            parameters.Add(new SqlParameter("@FirebaseId", firebaseId ?? (object)DBNull.Value));
+            parameters.Add(new SqlParameter("@Usuario"   , user       ?? (object)DBNull.Value));
+
+            //jsonUp.Add("InicioFechaTrasladoUTC" , InicioFechaTrasladoUTC);
+            //jsonUp.Add("InicioDireccion"        , inicioDireccion);
+            //jsonUp.Add("InicioLatitud"          , inicioLatitud.ToString());
+            //jsonUp.Add("InicioLongitud"         , inicioLongitud.ToString());
+            //jsonUp.Add("InicioGeoHash"          , inicioGeohash);
+
+            parameters.Add(new SqlParameter("@InicioFechaTraslado" , InicioFechaTrasladoUTC.ToString("yyyy-MM-dd HH:mm:ss") ?? (object)DBNull.Value));
+            parameters.Add(new SqlParameter("@InicioDireccion"     , inicioDireccion           ?? (object)DBNull.Value));
+            parameters.Add(new SqlParameter("@InicioLat"           , inicioLatitud.ToString()  ?? (object)DBNull.Value));
+            parameters.Add(new SqlParameter("@InicioLon"           , inicioLongitud.ToString() ?? (object)DBNull.Value));
+            parameters.Add(new SqlParameter("@InicioGeoHash"       , inicioGeohash             ?? (object)DBNull.Value));
+
+            if (data.status == "3" && (data.statusInfo?.txt is "Autorizada" or "Cerrada"))
+            {
+                #region Declara variables y obtiene elementos necesarios para cierre de actividad
+
+                DateTimeOffset finFechaTrasladoUTC = DateTimeOffset.UtcNow;
+                var finDireccion                    = String.Empty;
+                double finLatitud                   = 0;
+                double finLongitud                  = 0;
+                var FinGeoHash                      = String.Empty;                
+                #endregion
+                
+                #region Asigna variables Elemento Destino
+                if (destinoElement is not null)
+                {
+                    var infoMap = destinoElement.info;
+
+                    finFechaTrasladoUTC = infoMap.check_date_utc_dateTimeOffset;
+                    finDireccion        = infoMap.address ??= "";
+                    finLatitud          = infoMap.geolocation.geopoint._latitude;
+                    finLongitud         = infoMap.geolocation.geopoint._longitude;
+                    FinGeoHash          = infoMap.geolocation.geohash ??= "";
+                }
+                #endregion
+                
+                int durationMint = Utilities.DiferenciaMinutos(InicioFechaTrasladoUTC, finFechaTrasladoUTC);
+
+                #region Asigna variables Elemento Comentarios
+                if (comentariosElement is not null)
+                {
+                    comentarioFinal = comentariosElement.value;
+                }
+                #endregion
+
+                //jsonUp.Add("FinFechaTrasladoUTC", finFechaTrasladoUTC);
+                //jsonUp.Add("FinDireccion"       , finDireccion);
+                //jsonUp.Add("FinLatitud"         , finLatitud.ToString());
+                //jsonUp.Add("FinLongitud"        , finLongitud.ToString());
+                //jsonUp.Add("FinGeoHash"         , FinGeoHash);
+                //jsonUp.Add("Comentarios"        , comentarioFinal);
+
+                parameters.Add(new SqlParameter("@FinFechaTraslado" , finFechaTrasladoUTC.ToString("yyyy-MM-dd HH:mm:ss") ?? (object)DBNull.Value));
+                parameters.Add(new SqlParameter("@FinDireccion"     , finDireccion           ?? (object)DBNull.Value));
+                parameters.Add(new SqlParameter("@FinLat"           , finLatitud.ToString()  ?? (object)DBNull.Value));
+                parameters.Add(new SqlParameter("@FinLon"           , finLongitud.ToString() ?? (object)DBNull.Value));
+                parameters.Add(new SqlParameter("@FinGeoHash"       , FinGeoHash             ?? (object)DBNull.Value));
+                parameters.Add(new SqlParameter("@Comentarios"      , comentarioFinal        ?? (object)DBNull.Value));
+            }
+
+            
+
+            return (parameters);
         }
 
     }

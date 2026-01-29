@@ -1,5 +1,6 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Serialization;
+using TP_ITSM.Models.Execon;
 
 namespace TP_ITSM.Models
 {
@@ -73,4 +74,42 @@ namespace TP_ITSM.Models
         }
     }
 
+    public class TimestampOrEmptyConverter : JsonConverter<Timestamp>
+    {
+        public override Timestamp Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            switch (reader.TokenType)
+            {
+                case JsonTokenType.String:
+                    var str = reader.GetString();
+                    if (string.IsNullOrEmpty(str))
+                    {
+                        return new Timestamp();
+                    }
+                    // Opcional: intentar parsear de string si es una fecha
+                    return ParseFromString(str);
+
+                case JsonTokenType.StartObject:
+                    return JsonSerializer.Deserialize<Timestamp>(ref reader, options);
+
+                case JsonTokenType.Null:
+                    return null;
+
+                default:
+                    throw new JsonException($"Cannot convert {reader.TokenType} to Timestamp");
+            }
+        }
+
+        public override void Write(Utf8JsonWriter writer, Timestamp value, JsonSerializerOptions options)
+        {
+            JsonSerializer.Serialize(writer, value, options);
+        }
+
+        private Timestamp ParseFromString(string str)
+        {
+            // Implementar lógica para convertir string a Timestamp si es necesario
+            // Por ejemplo, si el string es una fecha ISO
+            return new Timestamp();
+        }
+    }
 }

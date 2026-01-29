@@ -4,12 +4,12 @@ using System.Collections.Specialized;
 using System.Net.Http.Headers;
 using System.Net.Mail;
 using System.Reflection;
-using System.Security.AccessControl;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Web;
 using TP_ITSM.Custom;
+using TP_ITSM.Data;
 using TP_ITSM.Models;
 using TP_ITSM.Models.Execon;
 using TP_ITSM.Models.Trackpoint;
@@ -43,12 +43,15 @@ namespace TP_ITSM.Services.Execon
         private ActivityReq _tpRequest  = new ActivityReq();
         private Preload _preloadRequest = new Preload();
 
+        private readonly ConnIVANTIDW _dwContext;
         private readonly Trackpoint.ITrackpointServices _tpServices;
         #endregion
 
-        public Services(ITrackpointServices services)
+        public Services(ITrackpointServices services,
+        ConnIVANTIDW dwContext)
         {
             _tpServices = services;
+            _dwContext  = dwContext;
             var builder = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory()).AddJsonFile("appsettings.json").Build();
             _url = builder.GetSection("HttpClient:url").Value;
             _ambiente = Boolean.Parse(builder.GetSection("SettingsExecon:EnableDev").Value!)
@@ -352,20 +355,27 @@ namespace TP_ITSM.Services.Execon
         {
             try
             {
-                body = await InfoConvert(body);
+                if (body.data.created_api)
+                {
+                    body = await InfoConvert(body);
+                    var (upByStatus, action, isNote, note) = JsonResponse.TaskITSM(body);
+                    
+                    await UpDataITSM(body, isNote, note);
 
+                    var (successUpd, _responseText) = await UpPatchITSM("Task", body.data.preload[0].frmRecIdTask, upByStatus);
+                    if (!successUpd)
+                        return (successUpd, _responseText);
+                }else
+                {
+                    body = await InfoConvert(body);
+                    var parameters = await JsonResponse.TrasladoRetorno(body);
 
-                var (upByStatus, action, isNote, note )= JsonResponse.TaskITSM(body, _url);
+                    var result = await _dwContext.EjecutarProcedimientoAsync("EXsp_TrackPoint_TrasladoRegreso", parameters.ToArray());
 
-                var (successUpd, _responseText) = await UpPatchITSM("Task", body.data.preload[0].frmRecIdTask, upByStatus);
-                if (!successUpd)
-                    return (successUpd, _responseText);
+                    return (true, result.ToString());
+                }
 
-                var (successNote, responseNote) = isNote 
-                    ?  await SendPostITSM("/api/Obj/AddNote", note) 
-                    : (false, null);
-
-                return (true, _responseText);
+                    return (true, _responseText);
             }
             catch (Exception ex)
             {
@@ -373,22 +383,15 @@ namespace TP_ITSM.Services.Execon
             }
         }
 
-
         private async Task<ResponseTaskTP> InfoConvert(ResponseTaskTP body)
         {
             Models.Execon.Data data = body.data;
-            Models.Execon.Preload? preload = data.preload[0];
+            Models.Execon.Preload? preload = data.preload is not null ? data.preload[0] : null;
             
             EmployeeInfo? employeeDel = new EmployeeInfo();
             EmployeeInfo? employeeUsr = new EmployeeInfo();
             string deletedBy    = data.deletedBy is "No disponible" ? "" : new MailAddress(data.deletedBy).User; 
             string user         = data.scheduled_user_email is null ? "" : new MailAddress(data.scheduled_user_email).User;
-
-            if( preload is not null )
-            {
-                //var (successTask, responseTask) = await GetTask(preload.frmAssignmentId);
-                var (successTask, responseTask) = await GetTaskReq(preload.frmAssignmentId);                 
-            }
 
             if (deletedBy != "")
             {
@@ -406,43 +409,63 @@ namespace TP_ITSM.Services.Execon
                 body.data.scheduled_user_email = (employeeUsr is not null) ? employeeUsr.LoginId : "";
             }
 
-            if (data.status == "2" && data.statusInfo.txt == "Abierta")
+            return body;
+        }
+
+        private async Task UpDataITSM(ResponseTaskTP body, bool isNote = false, NotaITSM? note = null)
+        {
+            Models.Execon.Data data = body.data;
+            Models.Execon.Preload? preload = data.preload is not null ? data.preload[0] : null;
+            
+            if (preload is not null)
             {
-                var url = String.Concat("https://trackpoint.webpoint.mx/reportnew/?customerId=execon&orderId=", data.firebase_id);
-                await AddAttachementModel(preload!.frmRecIdTask, url, url);
-            }
+                var (successTask, responseTask) = await GetTaskReq(preload.frmAssignmentId);
+
+                if (data.status == "2" && data.statusInfo.txt == "Abierta")
+                {
+                    var (successNote, responseNote) = isNote
+                        ? await SendPostITSM("/api/Obj/AddNote", note)
+                        : (false, null);
+
+                    var url = String.Concat("https://trackpoint.webpoint.mx/reportnew/?customerId=execon&orderId=", data.firebase_id);
+                    await AddAttachementModel(preload!.frmRecIdTask, url, url);
+                }
 
                 if (data.status == "3")
-            {
-                var url = String.Concat("https://trackpoint-d2fa6.uc.r.appspot.com/getPdfNew?q=execon&order_id=", data.firebase_id);
-                await AddAttachementModel(preload!.frmRecIdTask, url, url);
-
-                var llegadaSitioElement = data.elements.FirstOrDefault(e => e.title == "Llegada a sitio");
-                LocationUp? locationUp = new LocationUp();
-
-                #region Valida actualizacion de Location
-                if (_tpRequest.scheduled_clasification_name == "SIN ZONA")
                 {
-                    locationUp.EX_Zona           = (data.classification_category_name != "SIN ZONA") ? data.classification_category_name    : _tpRequest.scheduled_clasification_name;
-                    locationUp.EX_PlazaCobertura = (data.classification_category_name != "SIN ZONA") ? data.classification_subcategory_name : _tpRequest.scheduled_subclasification_name;
+                    var (successNote, responseNote) = isNote
+                        ? await SendPostITSM("/api/Obj/AddNote", note)
+                        : (false, null);
+
+                    var url = String.Concat("https://trackpoint-d2fa6.uc.r.appspot.com/getPdfNew?q=execon&order_id=", data.firebase_id);
+                    await AddAttachementModel(preload!.frmRecIdTask, url, url);
+
+                    var llegadaSitioElement = data.elements.FirstOrDefault(e => e.title == "Llegada a sitio");
+                    LocationUp? locationUp = new LocationUp();
+
+                    #region Valida actualizacion de Location
+                    if (_tpRequest.scheduled_clasification_name == "SIN ZONA")
+                    {
+                        locationUp.EX_Zona = (data.classification_category_name != "SIN ZONA") ? data.classification_category_name : _tpRequest.scheduled_clasification_name;
+                        locationUp.EX_PlazaCobertura = (data.classification_category_name != "SIN ZONA") ? data.classification_subcategory_name : _tpRequest.scheduled_subclasification_name;
+                    }
+                    #endregion
+
+                    #region Asigna variables Elemento Llegada a Sitio
+                    if (llegadaSitioElement is not null)
+                    {
+                        var infoMap = llegadaSitioElement.info;
+
+                        var addressSite = infoMap.address ??= "";
+                        locationUp.EX_Geohash = infoMap.geolocation.geohash ??= "";
+                        locationUp.EX_Latitud = infoMap.geolocation.geopoint._latitude;
+                        locationUp.EX_Longitud = infoMap.geolocation.geopoint._longitude;
+
+                        var (successUpd, _responseText) = await UpPatchITSM("Location", _location.RecId, locationUp);
+                    }
+                    #endregion
                 }
-                #endregion
-
-                #region Asigna variables Elemento Llegada a Sitio
-                if (llegadaSitioElement is not null)
-                {
-                    var infoMap = llegadaSitioElement.info;
-
-                    var addressSite = infoMap.address ??= "";
-                    locationUp.EX_Geohash  = infoMap.geolocation.geohash ??= "";
-                    locationUp.EX_Latitud  = infoMap.geolocation.geopoint._latitude;
-                    locationUp.EX_Longitud = infoMap.geolocation.geopoint._longitude;
-
-                    var (successUpd, _responseText) = await UpPatchITSM("Location", _location.RecId, locationUp);
-                }
-                #endregion
             }
-            return body;
         }
 
         private JsonElement ConvertModelToJsonElement<T>(T model) => JsonDocument.Parse(JsonConvert.SerializeObject(model)).RootElement.Clone();

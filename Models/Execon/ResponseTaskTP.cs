@@ -75,6 +75,7 @@ namespace TP_ITSM.Models.Execon
 
         #region Variables con Timestamp y DateTimeOffset
         [JsonPropertyName("start_date_utc")]
+        [JsonConverter(typeof(TimestampOrEmptyConverter))]
         public Timestamp start_date_utc { get; set; }
 
         [JsonPropertyName("start_date_utc_dateTimeOffset")]
@@ -88,6 +89,7 @@ namespace TP_ITSM.Models.Execon
         public DateTimeOffset? start_date_utc2 { get; set; } = DateTimeOffset.UtcNow;
 
         [JsonPropertyName("end_date_utc")]
+        [JsonConverter(typeof(TimestampOrEmptyConverter))]
         public Timestamp end_date_utc { get; set; }
 
         [JsonPropertyName("end_date_utc_dateTimeOffset")]
@@ -101,6 +103,7 @@ namespace TP_ITSM.Models.Execon
         public DateTimeOffset? end_date_utc2 { get; set; } = DateTimeOffset.UtcNow;
 
         [JsonPropertyName("scheduled_programming_date")]
+        [JsonConverter(typeof(TimestampOrEmptyConverter))]
         public Timestamp scheduled_programming_date { get; set; }
 
         [JsonPropertyName("scheduled_programming_dateTimeOffset")]
@@ -110,6 +113,7 @@ namespace TP_ITSM.Models.Execon
         }
 
         [JsonPropertyName("scheduled_limit_date")]
+        [JsonConverter(typeof(TimestampOrEmptyConverter))]
         public Timestamp scheduled_limit_date { get; set; }
 
         [JsonPropertyName("scheduled_limit_dateTimeOffset")]
@@ -312,6 +316,9 @@ namespace TP_ITSM.Models.Execon
         [JsonPropertyName("last_modified_by")]
         public string last_modified_by { get; set; } = "No disponible";
 
+        [JsonPropertyName("value")]
+        public string? value { get; set; } = "No disponible";
+
         [JsonPropertyName("isComment")]
         public bool? isComment { get; set; } = false;
 
@@ -330,6 +337,7 @@ namespace TP_ITSM.Models.Execon
 
         #region Variables con Timestamp y DateTimeOffset
         [JsonPropertyName("started_at_utc")]
+        [JsonConverter(typeof(TimestampOrEmptyConverter))]
         public Timestamp started_at_utc { get; set; }
 
         [JsonPropertyName("started_at_utc_dateTimeOffset")]
@@ -340,6 +348,7 @@ namespace TP_ITSM.Models.Execon
         }
 
         [JsonPropertyName("last_modified_at_utc")]
+        [JsonConverter(typeof(TimestampOrEmptyConverter))]
         public Timestamp last_modified_at_utc { get; set; }
 
         [JsonPropertyName("last_modified_at_utc_dateTimeOffset")]
@@ -388,6 +397,7 @@ namespace TP_ITSM.Models.Execon
         public string check_date { get; set; } = "No disponible";
 
         [JsonPropertyName("check_date_utc")]
+        [JsonConverter(typeof(TimestampOrEmptyConverter))]
         public Timestamp check_date_utc { get; set; }
 
         [JsonPropertyName("check_date_utc_dateTimeOffset")]
