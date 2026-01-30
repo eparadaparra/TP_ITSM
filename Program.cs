@@ -1,11 +1,22 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Serilog;
 
 using TP_ITSM.Data;
+using TP_ITSM.Middlewares;
 using TP_ITSM.Models;
 using TP_ITSM.Services.Execon;
 using TP_ITSM.Services.Trackpoint;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configurar Serilog
+builder.Host.UseSerilog((context, services, configuration) =>
+{
+    configuration
+        .ReadFrom.Configuration(context.Configuration)
+        .ReadFrom.Services(services)
+        .Enrich.FromLogContext();
+});
 
 // Add services to the container.
 builder.Services.AddCors(option =>
@@ -26,7 +37,7 @@ builder.Services.AddDbContext<ConnITSM>(options =>
 
 //builder.Services.AddDbContext
 
-builder.Services.AddScoped<IExeconServices, TP_ITSM.Services.Execon.Services>();
+builder.Services.AddScoped<IExeconServices, TP_ITSM.Services.Execon.Service>();
 builder.Services.AddScoped<ITrackpointServices, TP_ITSM.Services.Trackpoint.Service>();
 
 // Add services to the container.
@@ -51,6 +62,10 @@ var app = builder.Build();
 app.UseSwagger();
 app.UseSwaggerUI();
 //}
+
+app.UseSerilogRequestLogging(); // 👈 log automático por request
+
+app.UseMiddleware<CorrelationMiddleware>(); // Se registra en Middleware
 
 app.UseHttpsRedirection();
 

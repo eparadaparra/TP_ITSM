@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Collections.Specialized;
 using System.Net.Http.Headers;
@@ -18,7 +19,7 @@ using Preload = TP_ITSM.Models.Trackpoint.Preload;
 
 namespace TP_ITSM.Services.Execon
 {
-    public class Services : IExeconServices
+    public class Service : IExeconServices
     {
         #region Declaración de Variables
         private string? _url;
@@ -29,6 +30,7 @@ namespace TP_ITSM.Services.Execon
         private int _timeOutValue;
 
         private List<string> _lstLogEvent = [];
+        private StringBuilder sb = new StringBuilder().Append('*', 30).Append(" ").Append(DateTime.Now.ToString()).Append(" ").Append('*', 30);
 
         private TaskInfo _task               = new TaskInfo();
         private ParentInfo _parentTask       = new ParentInfo();
@@ -44,21 +46,31 @@ namespace TP_ITSM.Services.Execon
         private Preload _preloadRequest = new Preload();
 
         private readonly ConnIVANTIDW _dwContext;
-        private readonly Trackpoint.ITrackpointServices _tpServices;
+        private readonly ITrackpointServices _tpServices;
+        private readonly ILogger<Service> _logger;
         #endregion
 
-        public Services(ITrackpointServices services,
-        ConnIVANTIDW dwContext)
+        public Service(ITrackpointServices services, ConnIVANTIDW dwContext, ILogger<Service> logger)
         {
             _tpServices = services;
             _dwContext  = dwContext;
-            var builder = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory()).AddJsonFile("appsettings.json").Build();
+            _logger     = logger;
+
+            //_logger.LogInformation(sb.ToString());
+            _logger.LogInformation("Inicializando Execon Services");
+
+            var builder = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json")
+                .Build();
             _url = builder.GetSection("HttpClient:url").Value;
             _ambiente = Boolean.Parse(builder.GetSection("SettingsExecon:EnableDev").Value!)
                     ? builder.GetSection("HttpClient:dev").Value
                     : builder.GetSection("HttpClient:pro").Value;
             _expirationDate = Int32.Parse(builder.GetSection("SettingsExecon:ExpirationDate").Value!);
             _timeOutValue   = Int32.Parse(builder.GetSection("SettingsExecon:TimeOutSeconds").Value!);
+
+            _logger.LogInformation($"Configuración cargada | Ambiente: {_ambiente} | Timeout: {_timeOutValue}'s");
         }
 
         private HttpClient CreateHttpClient()
@@ -80,26 +92,32 @@ namespace TP_ITSM.Services.Execon
         }
 
         public async Task<(bool, string)> GetTask(int assignmentId)
-        {
+        {            
             try
             {
                 string objeto = "Task";
                 string filter = $"AssignmentId eq {assignmentId} AND TaskType eq 'Assignment'";
                 string select = "RecId, AssignmentID, Priority, PlannedStartDate, Details, ParentLink_RecID, ParentLink_Category, EX_CodigoCierre, Subject, EX_FirebaseID";
 
+                _logger.LogDebug($"GetTask filtro | Objeto: {objeto} | Buscar: {select}");
+
                 bool response = await GetFilter(objeto, filter, select);
-                if (response)
+
+                if (!response)
                 {
-                    _task = await DeserializeODataResponse<TaskInfo>(_responseText);
-                    return (response, _responseText);
+                    _logger.LogWarning("GetTask sin respuesta válida | AssignmentId: {AssignmentId}", assignmentId);
+                    return (false, $"   ! No se pudo obtener la información de {objeto}");
                 }
-                else
-                {
-                    return (false, $"No se pudo obtener la información de {objeto}");
-                }
+
+                _task = await DeserializeODataResponse<TaskInfo>(_responseText);
+
+                _logger.LogInformation($"   ✓ GetTask exitoso | RecId: {_task.RecId} | Priority: {_task.Priority}");
+
+                return (true, _responseText);
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "   × Error en GetTask | AssignmentId: {AssignmentId}", assignmentId);
                 return (false, ex.Message);
             } 
         }
@@ -120,20 +138,26 @@ namespace TP_ITSM.Services.Execon
                     , "Owner_Valid"
                 );
 
+                _logger.LogDebug($"Get{objName}Info | RecId: {recId} | Buscar: {select}");
+
                 bool response = await GetFilter(objName, $"RecId eq '{recId}'", select);
 
-                if (response)
+                if (!response)
                 {
-                    _parentTask = await DeserializeODataResponse<ParentInfo>(_responseText);
-                    return (response, _responseText);
-                }
-                else
-                {
+                    _logger.LogWarning($"   ! Get{objName}Info sin respuesta válida | RecId: {recId}");
                     return (false, $"No se pudo obtener la información de {objName}");
                 }
+
+                _parentTask = await DeserializeODataResponse<ParentInfo>(_responseText);
+                
+                _logger.LogInformation($"   ✓ Get{objName}Info exitoso | {objName}: {_parentTask.ParentNumber} | RecId: {recId} | Subject: {_parentTask.Subject}");
+
+                return (response, _responseText);
+                
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, $"   × Error en Get{objName}Info | recId: {recId}");
                 return (false, ex.Message);
             }
         }
@@ -144,20 +168,25 @@ namespace TP_ITSM.Services.Execon
             {
                 string select = "RecId, CustID, Name";
 
+                _logger.LogDebug($"GetAccount | RecId: {recId} | Buscar: {select}");
+
                 bool response = await GetFilter("Account", $"RecId eq '{recId}'", select);
 
-                if (response)
+                if (!response)
                 {
-                    _account = await DeserializeODataResponse<AccountInfo>(_responseText);
-                    return (response, _responseText);
-                }
-                else
-                {
+                    _logger.LogWarning($"   ! GetAccount sin respuesta válida | RecId: {recId}");
                     return (false, $"No se pudo obtener la información del Account");
                 }
+
+                _account = await DeserializeODataResponse<AccountInfo>(_responseText);
+
+                _logger.LogInformation($"   ✓ GetAccount exitoso | CustId: {_account.CustID} | Cliente: {_account.Name}");
+
+                return (response, _responseText);                
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, $"   × Error en GetAccount | recId: {recId}");
                 return (false, ex.Message);
             }
         }
@@ -168,20 +197,25 @@ namespace TP_ITSM.Services.Execon
             {
                 string select = "RecId, EX_IdSitio, Name, EX_Zona, EX_PlazaCobertura, EX_Latitud, EX_Longitud, Address, EX_Colonia, City, Zip, State, EX_Geohash";
 
+                _logger.LogDebug($"GetLocation | RecId: {recId} | Buscar: {select}");
+
                 bool response = await GetFilter("Location", $"RecId eq '{recId}'", select);
 
-                if (response)
+                if (!response)
                 {
-                    _location = await DeserializeODataResponse<LocationInfo>(_responseText);
-                    return (response, _responseText);
-                }
-                else
-                {
+                    _logger.LogWarning($"   ! GetLocation sin respuesta válida | RecId: {recId}");
                     return (false, $"No se pudo obtener la información del Location");
                 }
+                
+                _location = await DeserializeODataResponse<LocationInfo>(_responseText);
+
+                _logger.LogInformation($"   ✓ GetLocation exitoso | IdSitio: {_location.EX_IdSitio} | Sitio: {_location.Name}");
+
+                return (response, _responseText);
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, $"   × Error en GetLocation | recId: {recId}");
                 return (false, ex.Message);
             }
         }
@@ -192,20 +226,25 @@ namespace TP_ITSM.Services.Execon
             {
                 string select = "RecId, DisplayName, Supervisor, Title, Department, Team, Status, Disabled, PrimaryEmail, LoginId";
 
+                _logger.LogDebug($"GetEmployee | Owner: {owner} | Buscar: {select}");
+
                 bool response = await GetFilter("Employee", $"LoginID eq '{owner}'", select);
 
-                if (response)
+                if (!response)
                 {
-                    _employee = await DeserializeODataResponse<EmployeeInfo>(_responseText);
-                    return (response, _responseText);
+                    _logger.LogWarning($"   ! GetEmployee sin respuesta válida | Owner: {owner}");
+                    return (false, $"No se pudo obtener la información del Employee");
                 }
-                else
-                {
-                    return (false, $"No se pudo obtener la información del Location");
-                }
+
+                _employee = await DeserializeODataResponse<EmployeeInfo>(_responseText);
+
+                _logger.LogInformation($"   ✓ GetEmployee exitoso | Nombre: {_employee.DisplayName} | Puesto: {_employee.Title}");
+
+                return (response, _responseText);
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, $"   × Error en GetEmployee | Owner: {owner}");
                 return (false, ex.Message);
             }
         }
@@ -216,137 +255,165 @@ namespace TP_ITSM.Services.Execon
             {
                 string select = "RecId, TaskSubject, EX_IdActividadTP&$top=1";
 
+                _logger.LogDebug($"GetTaskCatalog | Tipo de Tarea: {taskSubject} | Buscar: {select}");
+
                 bool response = await GetFilter("TaskCatalog__Assignment", $"TaskSubject eq '{taskSubject}'", select);
 
-                if (response)
+                if (!response)
                 {
-                    _taskCatalog = await DeserializeODataResponse<TaskCatalogInfo>(_responseText);
-                    return (response, _responseText);
-                }
-                else
-                {
+                    _logger.LogWarning($"   ! GetTaskCatalog sin respuesta válida | Tipo de Tarea: {taskSubject}");
                     return (false, $"No se pudo obtener la información del Location");
                 }
+                
+                _taskCatalog = await DeserializeODataResponse<TaskCatalogInfo>(_responseText);
+
+                _logger.LogInformation($"   ✓ GetTaskCatalog exitoso | idTrackpoint: {_taskCatalog.EX_IdActividadTP} | Tipo de Tarea: {_taskCatalog.TaskSubject}");
+
+                return (response, _responseText);
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, $"   × Error en GetTaskCatalog | Tipo de Tarea: {taskSubject}");
                 return (false, ex.Message);
             }
         }
 
         public async Task<(bool, string)> GetTaskReq(int assignmentId)
         {
+            _logger.LogInformation($"-> GetTaskReq iniciado | AssignmentId: {assignmentId}");
+
             try
             {
                 _tpAuth = await _tpServices.GetToken();
 
                 #region Busca Información de Task
-                var (successTask, respTaskInfo) = await GetTask(assignmentId);
+                var (successTask, _) = await GetTask(assignmentId);
                 if (!successTask)
-                    return (false, respTaskInfo);
+                    return (false, "Error obteniendo la informción de la Tarea");
                 SetValuesModels(_tpRequest, _task);
                 #endregion
 
                 #region Busca Información del ParentTask
-                var (successParent, respParent) = await GetParentInfo( _task?.ParentLink_RecID, _task.ParentLink_Category);
+                var (successParent, _) = await GetParentInfo( _task?.ParentLink_RecID, _task.ParentLink_Category);
                 if (!successParent)
-                    return (false, respParent);
+                    return (false, "Error obteniendo la informción del Parent");
                 SetValuesModels(_tpRequest, _parentTask);
                 #endregion
 
                 #region Busca Información de la Cuenta del Cliente
-                var (successAccount, respAccount) = await GetAccount(_parentTask?.EX_CustID_Link_RecID);
+                var (successAccount, _) = await GetAccount(_parentTask?.EX_CustID_Link_RecID);
                 if (!successAccount)
-                    return (false, respAccount);
-                
+                    return (false, "Error obteniendo la informción del Cliente");
+
                 #region Valida existencia de customer en Trackpoint
                 var (successGetCustUuid, tpCustUuid) = await GetSetTpCustomerInfo(_account);
+                if (!successGetCustUuid)
+                    return (false, "Error obteniendo la informción del Cliente en Trackpoint");
                 #endregion
-                if (!successGetCustUuid) 
-                    return (false, tpCustUuid);
-
                 _tpRequest.scheduled_client_uuid = tpCustUuid;
                 SetValuesModels(_tpRequest, _account);
                 #endregion
 
                 #region Busca Información del Location
-                var (successLocation, respLocation) = await GetLocation(_parentTask?.EX_LocationID_Link_RecID);
+                var (successLocation, _) = await GetLocation(_parentTask?.EX_LocationID_Link_RecID);
                 if (!successLocation)
-                    return (false, respLocation);
+                    return (false, "Error obteniendo la informción del Sitio");
                 SetValuesModels(_tpRequest, _location);
                 #endregion
 
                 #region Busca Información del Employee
-                var (successEmployee, respEmployee) = await GetEmployee(_parentTask?.Owner);
+                var (successEmployee, _) = await GetEmployee(_parentTask?.Owner);
                 if (!successEmployee)
-                    return (false, respEmployee);
+                    return (false, "Error obteniendo la informción del Empleado");
                 SetValuesModels(_tpRequest, _employee);
                 #endregion
 
                 #region Busca Información del Catalogo de Tareas
-                var (successTaskCat, respTaskCat) = await GetTaskCatalog(_task?.Subject);
+                var (successTaskCat, _) = await GetTaskCatalog(_task?.Subject);
                 if (!successTaskCat)
-                    return (false, respTaskCat);
+                    return (false, "Error obteniendo la informción del Catálogo de Tareas");
                 SetValuesModels(_tpRequest, _taskCatalog);
                 #endregion
 
                 #region Asignaciones puntuales
                 SetPreloadValues(_task, _parentTask, _location, _account, _employee);
-                _tpRequest.scheduled_name_event = String.Concat( _task.AssignmentID, " | ", _parentTask.ParentNumber, " | P", _task.Priority, " | ", _location.EX_IdSitio, " | ", _location.Name);
-                _tpRequest.scheduled_expiration_date = _expirationDate!;
+
                 _tpRequest.id_user = _tpAuth.uuid;
+                _tpRequest.scheduled_expiration_date = _expirationDate!;
+                _tpRequest.scheduled_name_event = String.Concat( _task.AssignmentID, " | ", _parentTask.ParentNumber, " | P", _task.Priority, " | ", _location.EX_IdSitio, " | ", _location.Name);
+
                 #endregion
 
+                _logger.LogInformation("✓ GetTaskReq finalizado correctamente");
+                _logger.LogDebug("Payload Trackpoint generado {@Request}", _tpRequest);
                 return (true, JsonConvert.SerializeObject(_tpRequest));
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "× Error crítico en GetTaskReq | AssignmentId: {AssignmentId}", assignmentId);
                 return (false, ex.Message);
             }
         }
 
         public async Task<(bool, string)> ScheduledTask(int assignmentId)
         {
-            try 
+            _logger.LogInformation("ScheduledTask iniciado...");
+
+            try
             {
                 #region Obtiene Información de la Tarea
-                var (successGetTask, tpRequest) = await GetTaskReq(assignmentId);
-                if (!successGetTask)
-                    return (false, tpRequest);
+                var (successGetTaskReq, _) = await GetTaskReq(assignmentId);
+                if (!successGetTaskReq)
+                {
+                    _logger.LogInformation("× GetTaskReq finalizado | Error generando al obtener información de la solicitud");
+                    return (false, "Error generando al obtener información de la solicitud"); 
+                }
                 #endregion
 
                 #region Manda Solicitud de creación de Activity en Trackpoint
-                var rootElementRequest = ConvertModelToJsonElement(_tpRequest);
-                #region Habilitar para ver el JSON generado si la linea de arriba falla
-                //using JsonDocument document = JsonDocument.Parse(tpRequest);
-                //JsonElement rootElementRequest = document.RootElement;
-                #endregion
+                var rootElementRequest = ConvertModelToJsonElement(_tpRequest); //Convierte Modelo a JElement
 
+                _logger.LogInformation("-> *SetActivityTP iniciado | Enviando Solicitud a Trackpoint...");
                 var (successSetActivity, resultActivity) = await _tpServices.SetActivityTP(rootElementRequest);
+
+                if (!successSetActivity)
+                {
+                    _logger.LogWarning("   ! Error creando Activity en Trackpoint | Response: {Response}", resultActivity);
+                    return (false, resultActivity);
+                }
                 var jsonObjCreated = JsonConvert.DeserializeObject<ActivityResult>(resultActivity);
                 string firebaseId = jsonObjCreated?.data.firebase_id ?? "";
-                if (!successSetActivity || firebaseId == "")
-                    return (false, resultActivity);
+                _logger.LogInformation("✓ *SetActivityTP finalizado exitosamente");
                 #endregion
 
                 #region Actualiza el Task en ITSM con el FirebaseID generado
-                var upData = new { EX_FirebaseID = firebaseId };
-                    Console.WriteLine("Tipo de var jsonPatch: " + upData.GetType().ToString());
-                var (successUpd, responseUpd) = await UpPatchITSM("Task", _preloadRequest.frmRecIdTask!, upData);
+                var upData = new { EX_FirebaseID = firebaseId }; //Console.WriteLine("Tipo de var jsonPatch: " + upData.GetType().ToString());
+                _logger.LogInformation($"-> UpPatchITSM iniciado...");
+                var (successUpd, _) = await UpPatchITSM("Task", _preloadRequest.frmRecIdTask!, upData);
                 if (!successUpd)
-                    Console.WriteLine($"No se pudo actualizar el Task con el FirebaseID: {_preloadRequest.frmRecIdTask}");
+                    _logger.LogWarning($"   ! No se pudo actualizar la Task {assignmentId} con el FirebaseID: {_preloadRequest.frmRecIdTask}");
+
+                _logger.LogInformation($"   ✓ UpPatchITSM finalizado correctamente | Actualiza FirebaseId: {_preloadRequest.frmRecIdTask!} en Tarea: {assignmentId}");
                 #endregion
 
                 #region Asigna el FirebaseID al modelo de Preload a la Actividad creada
+                _logger.LogInformation("-> *UpdActivityTP iniciado | Enviando Preload a Trackpoint...");
                 var (successSetPreload, resultPreload) = await _tpServices.UpdActivityTP(_preloadRequest, firebaseId);
+
                 if (!successSetPreload)
+                {
+                    _logger.LogWarning("   ! Error en *UpdActivityTP, Preload en Trackpoint | Response: {Response}", resultPreload);
                     return (false, resultPreload);
+                }
+                _logger.LogInformation("✓ *UpdActivityTP finalizado exitosamente");
                 #endregion
 
+                _logger.LogInformation("ScheduledTask finalizado exitosamente");
                 return (true, resultActivity);
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "   × Error en ScheduledTask | AssignmentId: {AssignmentId}", assignmentId);
                 return (false, ex.Message);
             }
         }
@@ -566,6 +633,8 @@ namespace TP_ITSM.Services.Execon
         {
             try
             {
+                _logger.LogDebug($"GetFilter | Objeto: {objeto} | Filter: {filter}");
+
                 NameValueCollection queryParams = HttpUtility.ParseQueryString(string.Empty);
                 queryParams["objeto"] = objeto;
                 queryParams["filter"] = filter;
@@ -574,12 +643,17 @@ namespace TP_ITSM.Services.Execon
                 HttpClient client = CreateHttpClient();
 
                 HttpResponseMessage response = await client.GetAsync($"{_ambiente}/api/Obj/Filter?{queryParams}");
+
+                if (!response.IsSuccessStatusCode)
+                    _logger.LogWarning($"GetFilter {objeto} falló | Status: {response.StatusCode}");
+
                 _responseText = await response.Content.ReadAsStringAsync();
 
                 return response.IsSuccessStatusCode;
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error en GetFilter | Objeto: {Objeto}", objeto);
                 _responseText = ex.Message;
                 return false;
             }
@@ -589,15 +663,20 @@ namespace TP_ITSM.Services.Execon
         {
             try
             {
+                _logger.LogDebug($"SendPostITSM | Objeto: {metodo} | Content: {httpContent}");
+
                 HttpClient client = CreateHttpClient();
 
                 HttpResponseMessage response = await client.PostAsJsonAsync($"{_ambiente}{metodo}", httpContent);
-                _responseText = await response.Content.ReadAsStringAsync();
+                if (!response.IsSuccessStatusCode)
+                    _logger.LogWarning($"SendPostITSM {metodo} falló | Status: {response.StatusCode}");
 
+                _responseText = await response.Content.ReadAsStringAsync();
                 return (response.IsSuccessStatusCode, _responseText);
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, $"Error en SendPostITSM | Método: {metodo} | Content: {httpContent}");
                 _responseText = ex.Message;
                 return (false, _responseText);
             }
@@ -607,20 +686,25 @@ namespace TP_ITSM.Services.Execon
         {
             try
             {
+                _logger.LogDebug($"UpPatchITSM | Objeto: {objeto} | recId: {recId}");
+                HttpClient client = CreateHttpClient();
+                
                 var content = new StringContent(JsonConvert.SerializeObject(update), Encoding.UTF8, "application/json");
                 NameValueCollection queryParams = HttpUtility.ParseQueryString(string.Empty);
                 queryParams["objeto"] = objeto;
                 queryParams["recId"] = recId;
 
-                HttpClient client = CreateHttpClient();
-
                 HttpResponseMessage response = await client.PatchAsync($"{_ambiente}/api/Obj/Update?{queryParams}", content);
-                _responseText = await response.Content.ReadAsStringAsync();
 
+                if (!response.IsSuccessStatusCode)
+                    _logger.LogWarning($"UpPatchITSM {objeto} falló | Status: {response.StatusCode}");
+                
+                _responseText = await response.Content.ReadAsStringAsync();
                 return (response.IsSuccessStatusCode, _responseText);
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, $"Error en UpPatchITSM | Objeto: {objeto} | RecId: {recId} | Update: {update}");
                 _responseText = ex.Message;
                 return (false, _responseText);
             }

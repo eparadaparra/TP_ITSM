@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using System.Text;
 using System.Text.Json;
 
 using TP_ITSM.Models;
@@ -12,9 +13,12 @@ namespace TP_ITSM.Controllers
     public class ExeconController : ControllerBase
     {
         private readonly IExeconServices _services;
-        public ExeconController(IExeconServices services)
+        private readonly ILogger<ExeconController> _logger;
+        
+        public ExeconController(IExeconServices services, ILogger<ExeconController> logger)
         {
             _services = services;
+            _logger = logger;
         }
 
         #region Get Task
@@ -22,24 +26,23 @@ namespace TP_ITSM.Controllers
         [Route("Task/{assignmentId}")]
         public async Task<IActionResult> GetTask(int assignmentId)
         {
-            var (success, result) = await _services.GetTask(assignmentId);
-
-            if (!success || string.IsNullOrEmpty(result))
-            {
-                ErrorResponse error = new ErrorResponse();
-                error.Mensaje = $"No se encontró la tarea con assignmentId: {assignmentId}";
-                return NotFound(error);
-            }
-
             try
             {
+                var (success, result) = await _services.GetTask(assignmentId);
+
+                if (!success || string.IsNullOrEmpty(result))
+                {
+                    ErrorResponse error = new ErrorResponse();
+                    error.Mensaje = $"No se encontró la tarea con assignmentId: {assignmentId}";
+                    return NotFound(error);
+                }
+                
                 JsonDocument.Parse(result);
                 return Content(result, "application/json; charset=utf-8");
             }
-            catch (JsonException)
+            catch (JsonException ex)
             {
-                // Si el JSON no es válido, retornar error
-                return StatusCode(500, "El formato del JSON es inválido");
+                return StatusCode(500, $"El formato de tarea es inválida {ex}");
             }
             
         }
@@ -215,26 +218,30 @@ namespace TP_ITSM.Controllers
         [Route("ScheduledTask/{assignmentId}")]
         public async Task<IActionResult> ScheduledTask(int assignmentId)
         {
-            var (success, result) = await _services.ScheduledTask(assignmentId);
-
-            if (!success || string.IsNullOrEmpty(result))
-            {
-                ErrorResponse error = new ErrorResponse();
-                error.Mensaje = $"No se encontró la tarea con assignmentId: {assignmentId}";
-                return NotFound(error);
-            }
-
+            _logger.LogInformation($"=== INICIO === Proceso de solicitud tarea {assignmentId}");
+            
             try
             {
+                var (success, result) = await _services.ScheduledTask(assignmentId);
+
+                if (!success || string.IsNullOrEmpty(result))
+                {
+                    ErrorResponse error = new ErrorResponse();
+                    error.Mensaje = $"Algo ocurrio al realizar la solicitud de la tarea {assignmentId}";
+                    _logger.LogWarning($"Algo ocurrio al realizar la solicitud de la tarea {assignmentId}");
+                    return NotFound(error);
+                }
+
                 JsonDocument.Parse(result);
+                _logger.LogInformation($"=== FIN === Proceso de solicitud tarea {assignmentId}, Firebase generado: {result}");
                 return Content(result, "application/json; charset=utf-8");
             }
-            catch (JsonException)
+            catch (JsonException ex)
             {
+                _logger.LogError(ex, $"Error al realizar solicitud de Tarea {assignmentId}");
                 // Si el JSON no es válido, retornar error
                 return StatusCode(500, "El formato del JSON es inválido");
             }
-
         }
         #endregion
 

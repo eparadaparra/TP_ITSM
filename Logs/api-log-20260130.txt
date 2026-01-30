@@ -1,0 +1,28 @@
+
+2026-01-30 10:06:55.689 -06:00 [INF] ************************************************************ 30/01/2026 10:06:55 a. m. ************************************************************
+2026-01-30 10:06:55.737 -06:00 [INF] Inicializando Trackpoint Services
+2026-01-30 10:06:55.743 -06:00 [INF] Configuración cargada | CustomerKey: execon | Timeout: 100's
+2026-01-30 10:06:55.932 -06:00 [INF] Inicializando Execon Services
+2026-01-30 10:06:55.940 -06:00 [INF] Configuración cargada | Ambiente: /IvantiDev | Timeout: 100's
+2026-01-30 10:06:55.983 -06:00 [INF] === INICIO === Proceso de solicitud tarea 2000250
+2026-01-30 10:06:55.994 -06:00 [INF] ScheduledTask iniciado...
+2026-01-30 10:06:55.999 -06:00 [INF] -> GetTaskReq iniciado | AssignmentId: 2000250
+2026-01-30 10:06:57.347 -06:00 [INF]    ✓ GetTask exitoso | RecId: F081ABD001D0413C8AA6E57B6EE654D9 | Priority: 5
+2026-01-30 10:06:57.905 -06:00 [INF]    ✓ GetIncidentInfo exitoso | Incident: 20231 | RecId: 36F4C74A62B14B2FBC616578A1032834 | Subject: Ejercicio de Prueba
+2026-01-30 10:06:57.999 -06:00 [INF]    ✓ GetAccount exitoso | CustId: 0000 | Cliente: EXECON
+2026-01-30 10:06:58.557 -06:00 [INF]       ✓ *GetCustomerTP exitoso | CustId: 0000 | IdClientTP: FNLhzuCK7fkcWkybhIDk | Cliente: EXECON
+2026-01-30 10:06:58.666 -06:00 [INF]    ✓ GetLocation exitoso | IdSitio: EDIFICIO | Sitio: Edificio EXECON
+2026-01-30 10:06:58.972 -06:00 [INF]    ✓ GetEmployee exitoso | Nombre: Gabriel Morgan Castillo | Puesto: Jefe de Infraestructura
+2026-01-30 10:06:59.052 -06:00 [INF]    ✓ GetTaskCatalog exitoso | idTrackpoint: Ebv6nHv4hLr4KaLcPILb | Tipo de Tarea: Programar visita para pruebas en sitio
+2026-01-30 10:06:59.060 -06:00 [INF] ✓ GetTaskReq finalizado correctamente
+2026-01-30 10:06:59.080 -06:00 [INF] -> SetActivityTP iniciado | Enviando Solicitud a Trackpoint...
+2026-01-30 10:07:00.005 -06:00 [INF]    ✓ *SetActivityTP exitoso | Actividad creada en Tracpoint Exitosamente, FirebaseId: IXvwWFVnngRhfK1aU5wN
+2026-01-30 10:07:00.012 -06:00 [INF] ✓ *SetActivityTP finalizado exitosamente
+2026-01-30 10:07:00.021 -06:00 [INF] -> UpPatchITSM iniciado...
+2026-01-30 10:07:00.267 -06:00 [INF]    ✓ UpPatchITSM finalizado correctamente | Actualiza FirebaseId: F081ABD001D0413C8AA6E57B6EE654D9 en Tarea: 2000250
+2026-01-30 10:07:00.272 -06:00 [INF] -> *UpdActivityTP iniciado | Enviando Preload a Trackpoint...
+2026-01-30 10:07:00.845 -06:00 [INF]    ✓ *UpdActivityTP exitoso | Actividad actualizada en Tracpoint Exitosamente, FirebaseId: IXvwWFVnngRhfK1aU5wN
+2026-01-30 10:07:00.852 -06:00 [INF] ✓ *UpdActivityTP finalizado exitosamente
+2026-01-30 10:07:00.858 -06:00 [INF] ScheduledTask finalizado exitosamente
+2026-01-30 10:07:00.865 -06:00 [INF] === FIN === Proceso de solicitud tarea 2000250, Firebase generado: {"statusCode":200,"message":"Consultado correctamente","data":{"firebase_id":"IXvwWFVnngRhfK1aU5wN","order_number":"2026-01-37610"}}
+2026-01-30 10:07:00.881 -06:00 [INF] HTTP POST /api/Execon/ScheduledTask/2000250 responded 200 in 5227.6869 ms

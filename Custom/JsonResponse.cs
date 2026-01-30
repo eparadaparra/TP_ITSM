@@ -228,7 +228,6 @@ namespace TP_ITSM.Custom
             var destinoElement      = data.elements.FirstOrDefault(e => e.title == "Destino");
             var comentariosElement  = data.elements.FirstOrDefault(e => e.title == "Comentarios");
 
-            //var jsonUp = new JObject();
             var parameters = new List<SqlParameter>();
 
             var status = data.statusInfo.txt;
@@ -245,19 +244,9 @@ namespace TP_ITSM.Custom
             var inicioGeohash                     = data.geolocation.geohash;
             var comentarioFinal                   = String.Empty;
 
-            //jsonUp.Add("Status"     , status);
-            //jsonUp.Add("FirebaseId" , firebaseId);
-            //jsonUp.Add("Usuario"    , user);
-
             parameters.Add(new SqlParameter("@Status"    , status     ?? (object)DBNull.Value));
             parameters.Add(new SqlParameter("@FirebaseId", firebaseId ?? (object)DBNull.Value));
             parameters.Add(new SqlParameter("@Usuario"   , user       ?? (object)DBNull.Value));
-
-            //jsonUp.Add("InicioFechaTrasladoUTC" , InicioFechaTrasladoUTC);
-            //jsonUp.Add("InicioDireccion"        , inicioDireccion);
-            //jsonUp.Add("InicioLatitud"          , inicioLatitud.ToString());
-            //jsonUp.Add("InicioLongitud"         , inicioLongitud.ToString());
-            //jsonUp.Add("InicioGeoHash"          , inicioGeohash);
 
             parameters.Add(new SqlParameter("@InicioFechaTraslado" , InicioFechaTrasladoUTC.ToString("yyyy-MM-dd HH:mm:ss") ?? (object)DBNull.Value));
             parameters.Add(new SqlParameter("@InicioDireccion"     , inicioDireccion           ?? (object)DBNull.Value));
@@ -265,8 +254,8 @@ namespace TP_ITSM.Custom
             parameters.Add(new SqlParameter("@InicioLon"           , inicioLongitud.ToString() ?? (object)DBNull.Value));
             parameters.Add(new SqlParameter("@InicioGeoHash"       , inicioGeohash             ?? (object)DBNull.Value));
 
-            if (data.status == "3" && (data.statusInfo?.txt is "Autorizada" or "Cerrada"))
-            {
+            //if (data.status == "3" && (data.statusInfo?.txt is "Autorizada" or "Cerrada"))
+            //{
                 #region Declara variables y obtiene elementos necesarios para cierre de actividad
 
                 DateTimeOffset finFechaTrasladoUTC = DateTimeOffset.UtcNow;
@@ -289,8 +278,6 @@ namespace TP_ITSM.Custom
                 }
                 #endregion
                 
-                int durationMint = Utilities.DiferenciaMinutos(InicioFechaTrasladoUTC, finFechaTrasladoUTC);
-
                 #region Asigna variables Elemento Comentarios
                 if (comentariosElement is not null)
                 {
@@ -298,20 +285,13 @@ namespace TP_ITSM.Custom
                 }
                 #endregion
 
-                //jsonUp.Add("FinFechaTrasladoUTC", finFechaTrasladoUTC);
-                //jsonUp.Add("FinDireccion"       , finDireccion);
-                //jsonUp.Add("FinLatitud"         , finLatitud.ToString());
-                //jsonUp.Add("FinLongitud"        , finLongitud.ToString());
-                //jsonUp.Add("FinGeoHash"         , FinGeoHash);
-                //jsonUp.Add("Comentarios"        , comentarioFinal);
-
                 parameters.Add(new SqlParameter("@FinFechaTraslado" , finFechaTrasladoUTC.ToString("yyyy-MM-dd HH:mm:ss") ?? (object)DBNull.Value));
                 parameters.Add(new SqlParameter("@FinDireccion"     , finDireccion           ?? (object)DBNull.Value));
                 parameters.Add(new SqlParameter("@FinLat"           , finLatitud.ToString()  ?? (object)DBNull.Value));
                 parameters.Add(new SqlParameter("@FinLon"           , finLongitud.ToString() ?? (object)DBNull.Value));
                 parameters.Add(new SqlParameter("@FinGeoHash"       , FinGeoHash             ?? (object)DBNull.Value));
                 parameters.Add(new SqlParameter("@Comentarios"      , comentarioFinal        ?? (object)DBNull.Value));
-            }
+            //}
 
             
 

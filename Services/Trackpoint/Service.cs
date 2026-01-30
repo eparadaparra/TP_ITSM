@@ -2,7 +2,6 @@
 using System.Net.Http.Headers;
 using System.Text;
 using TP_ITSM.Models;
-using TP_ITSM.Models.Execon;
 using TP_ITSM.Models.Trackpoint;
 using Preload = TP_ITSM.Models.Trackpoint.Preload;
 
@@ -19,15 +18,21 @@ namespace TP_ITSM.Services.Trackpoint
         private string? _user;
         private string? _pass;
         private string? _token;
-        private List<string> _lstLogEvent = [];
         private TpAuthResponse _tokenResponse;
 
         private int _timeOutValue;
         private string _responseText;
+
+        private readonly ILogger<Service> _logger;
+        private StringBuilder sb = new StringBuilder().Append('*', 60).Append(" ").Append(DateTime.Now.ToString()).Append(" ").Append('*', 60);
         #endregion
 
-        public Service()
+        public Service(ILogger<Service> logger)
         {
+            _logger = logger;
+            _logger.LogInformation(sb.ToString());
+            _logger.LogInformation("Inicializando Trackpoint Services");
+
             var builder = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory()).AddJsonFile("appsettings.json").Build();
             _timeOutValue   = Int32.Parse(builder.GetSection("SettingsExecon:TimeOutSeconds").Value!);
             _url            = builder.GetSection("HttpClientTP:url").Value;
@@ -36,6 +41,7 @@ namespace TP_ITSM.Services.Trackpoint
             _user           = builder.GetSection("HttpClientTP:email").Value;
             _pass           = builder.GetSection("HttpClientTP:pass").Value;
 
+            _logger.LogInformation($"Configuración cargada | CustomerKey: {_custumerKey} | Timeout: {_timeOutValue}'s");
         }
 
         private  HttpClient CreateHttpClient(bool token = true)
@@ -127,17 +133,20 @@ namespace TP_ITSM.Services.Trackpoint
             {
                 bool response = await SendPost("/ApigetCustomerbyid", httpCont);
 
-                if (response)
+                if (!response)
                 {
-                    return (response, _responseText);
-                }
-                else
-                {
+                    _logger.LogWarning($"      ! *GetCustomerTP sin respuesta válida | Uri: /ApigetCustomerbyid");
                     return (false, "No se pudo obtener la información del Customer");
                 }
+
+                TpCustomerResponse custumerTp = JsonConvert.DeserializeObject<TpCustomerResponse>(_responseText);
+                _logger.LogInformation($"      ✓ *GetCustomerTP exitoso | CustId: {custumerTp.data.client_id} | IdClientTP: {custumerTp.data.modules_notify.filters_uid} | Cliente: {custumerTp.data.name}");
+
+                return (response, _responseText);                
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, $"      × Error en *GetCustomerTP | Uri: /ApigetCustomerbyid");
                 return (false, ex.Message);
             }
         }
@@ -171,17 +180,22 @@ namespace TP_ITSM.Services.Trackpoint
             {
                 var response = await SendPost(metodo, httpCont);
 //return result = await response.Content.ReadFromJsonAsync<Dictionary<string, dynamic>>();
-                if (response)
+                if (!response)
                 {
-                    return (response, _responseText);
-                }
-                else
-                {
+                    _logger.LogWarning($"      ! *InsUpdDelCustomerTP sin respuesta válida | Uri: {metodo}");
                     return (false, $"Problemas al realizar metodo {metodo}");
                 }
+
+                if (request == "INS")
+                {
+                    TpCustomerResponse custumerTp = JsonConvert.DeserializeObject<TpCustomerResponse>(_responseText);
+                    _logger.LogInformation($"      ✓ *InsUpdDelCustomerTPTP exitoso | CustId: {custumerTp.data.client_id} | IdClientTP: {custumerTp.data.modules_notify.filters_uid} | Cliente: {custumerTp.data.name}");
+                }
+                return (response, _responseText);
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, $"      × Error en *InsUpdDelCustomerTP | Uri: {metodo}");
                 return (false, ex.Message);
             }
         }
@@ -215,7 +229,7 @@ namespace TP_ITSM.Services.Trackpoint
         {
             try
             {
-                Console.WriteLine(request.GetType());
+                //Console.WriteLine(request.GetType());
                 await AuthTp();
                 HttpClient client = new HttpClient();
                 // Generamos un identificador único para la idempotencia
@@ -231,20 +245,22 @@ namespace TP_ITSM.Services.Trackpoint
                 var response = await client.PostAsJsonAsync("/apiScheduledProgrammingAdd", request);
                 _responseText = await response.Content.ReadAsStringAsync();
 
-                if (response.IsSuccessStatusCode)
+                if (!response.IsSuccessStatusCode)
                 {
-                    var jsonObjCreated = JsonConvert.DeserializeObject<ActivityResult>(_responseText);
-                    string firebaseId = jsonObjCreated?.data.firebase_id ?? "";
-
-                    return (response.IsSuccessStatusCode, _responseText);
-                }
-                else
-                {
+                    _logger.LogWarning($"   ! *SetActivityTP sin respuesta válida | Uri: /apiScheduledProgrammingAdd");
                     return (false, _responseText);
                 }
+                
+                var jsonObjCreated = JsonConvert.DeserializeObject<ActivityResult>(_responseText);
+                string firebaseId = jsonObjCreated?.data.firebase_id ?? "";
+
+                _logger.LogInformation($"   ✓ *SetActivityTP exitoso | Actividad creada en Tracpoint Exitosamente, FirebaseId: {firebaseId}");
+
+                return (response.IsSuccessStatusCode, _responseText);                
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, $"   × Error crítico en SetActivityTP | Request: {request}");
                 return (false, ex.Message);
             }
         }
@@ -279,17 +295,18 @@ namespace TP_ITSM.Services.Trackpoint
                 var response = await client.PostAsync("/updateEventWebhook", content);
                 _responseText = await response.Content.ReadAsStringAsync();
 
-                if (response.IsSuccessStatusCode)
+                if (!response.IsSuccessStatusCode)
                 {
-                    return (response.IsSuccessStatusCode, _responseText);
-                }
-                else
-                {
+                    _logger.LogWarning($"   ! *UpdActivityTP sin respuesta válida | Uri: /updateEventWebhook");
                     return (false, _responseText);
                 }
+
+                _logger.LogInformation($"   ✓ *UpdActivityTP exitoso | Actividad actualizada en Tracpoint Exitosamente, FirebaseId: {firebaseId}");
+                return (response.IsSuccessStatusCode, _responseText);
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, $"   × Error crítico en *UpdActivityTP | Preload: {preload}");
                 return (false, ex.Message);
             }
         }

@@ -26,7 +26,7 @@ namespace TP_ITSM.Custom
                 string formattedDate = dateTimeOffset.ToString("yyyy-MM-ddTHH:mm:ssZ");
 
                 // Imprimir la fecha formateada
-                Console.WriteLine(formattedDate);
+                // Console.WriteLine(formattedDate);
                 return formattedDate;
             }
         }

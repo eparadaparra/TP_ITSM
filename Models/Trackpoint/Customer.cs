@@ -24,10 +24,10 @@ namespace TP_ITSM.Models.Trackpoint
         public string? message { get; set; }
 
         [JsonPropertyName("data")]
-        public DataCustomerTP? data { get; set; }
+        public DataCustomerTP? data { get; set; } = new DataCustomerTP();
 
         [JsonPropertyName("id")]
-        public string? id { get; set; }
+        public string? id { get; set; } = "";
     }
 
     public partial class DataCustomerTP
